@@ -1,0 +1,4 @@
+# emacs backups
+*~
+# cabal's dist directory
+dist
