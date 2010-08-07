@@ -1,0 +1,15 @@
+name:           relational
+version:        0.0.1
+cabal-version:  >= 1.2 && < 2
+author:         Kevin Charter
+synopsis:       Type classes for, and simple implementations of, relations.
+build-type:     Simple
+
+library
+  exposed-modules: Relational.Class
+  build-depends:   base >= 4 && < 5,
+                   mtl >= 1.0 && < 2
+  ghc-options:     -fwarn-incomplete-patterns
+                   -fwarn-unused-imports
+                   -- -prof -auto-all -caf-all
+                   -O2
