@@ -75,11 +75,11 @@ relSignature = toList . relSig
 relTuples :: Relation a -> [[a]]
 relTuples = map V.toList . S.toList . relTupleSet
 
-empty :: Signature -> Relation a
-empty s = Relation { relSig = s, relTupleSet = S.empty }
+relEmpty :: Signature -> Relation a
+relEmpty s = Relation { relSig = s, relTupleSet = S.empty }
 
-unsafeAddTuple :: (Error e, MonadError e m, Ord a) => [AttrName] -> [a] -> Relation a -> m (Relation a)
-unsafeAddTuple names values soFar =
+relUnsafeAddTuple :: (Error e, MonadError e m, Ord a) => [AttrName] -> [a] -> Relation a -> m (Relation a)
+relUnsafeAddTuple names values soFar =
     do when (nameCount /= valueCount) lengthMismatch
        return soFar{ relTupleSet = S.insert (mkTuple values) (relTupleSet soFar) }
     where nameCount = length names
@@ -94,7 +94,7 @@ unsafeAddTuple names values soFar =
 relMake :: (Error e, MonadError e m, Ord a) => [AttrName] -> [[a]] -> m (Relation a)
 relMake names tuples =
     do sig <- safeFromList names
-       foldM (flip (unsafeAddTuple names)) (empty sig) tuples
+       foldM (flip (relUnsafeAddTuple names)) (relEmpty sig) tuples
 
 instance (Ord a) => Relational AttrName a (Relation a) where
     signature = return . relSignature
