@@ -96,11 +96,28 @@ relMake names tuples =
     do sig <- safeFromList names
        foldM (flip (relUnsafeAddTuple names)) (relEmpty sig) tuples
 
+relUnion :: (Error e, MonadError e m, Ord a) => Relation a -> Relation a -> m (Relation a)
+relUnion r s =
+    do relCheckEqualSignatures r s
+       return Relation { relSig = relSig r,
+                         relTupleSet = S.union (relTupleSet r) (relTupleSet s) }
+ 
+relCheckEqualSignatures :: (Error e, MonadError e m) => Relation a -> Relation a -> m ()
+relCheckEqualSignatures r s =
+    when (rSig /= sSig) signatureMismatch
+    where rSig = relSig r
+          sSig = relSig s
+          signatureMismatch =
+              die ("Signature mismatch: " ++
+                   show rSig ++
+                   " versus " ++
+                   show sSig ++ ".")
+
 instance (Ord a) => Relational AttrName a (Relation a) where
     signature = return . relSignature
     tuples = return . relTuples
     make = relMake
-    union = todo
+    union = relUnion
     difference = todo
     rename = todo
     project = todo
