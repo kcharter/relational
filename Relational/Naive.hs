@@ -109,7 +109,13 @@ relUnion r s =
     do relCheckEqualSignatures r s
        return Relation { relSig = relSig r,
                          relTupleSet = S.union (relTupleSet r) (relTupleSet s) }
- 
+
+relDifference :: (Error e, MonadError e m, Ord a) => Relation a -> Relation a -> m (Relation a)
+relDifference r s =
+    do relCheckEqualSignatures r s
+       return Relation { relSig = relSig r,
+                         relTupleSet = S.difference (relTupleSet r) (relTupleSet s) }
+
 relCheckEqualSignatures :: (Error e, MonadError e m) => Relation a -> Relation a -> m ()
 relCheckEqualSignatures r s =
     when (rSig /= sSig) signatureMismatch
@@ -126,7 +132,7 @@ instance (Ord a) => Relational AttrName a (Relation a) where
     tuples = return . relTuples
     make = relMake
     union = relUnion
-    difference = todo
+    difference = relDifference
     rename = todo
     project = todo
     select = todo
