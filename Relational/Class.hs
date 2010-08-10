@@ -1,5 +1,15 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
 
+{-|
+
+A type class for relational data, 'Relational'.
+
+The class is meant to be abstract enough that it can be implemented by
+in-memory data structures, by interactions with a relational database,
+or by the AST for a language of relational expressions.
+
+-}
+
 module Relational.Class where
 
 import Control.Monad.Error (Error, MonadError)
@@ -44,7 +54,13 @@ data Expression n d m =
 -- renaming, projection, selection, and either cartesian product or
 -- (theta) join.
 class (Ord n, Ord d) => Relational n d r | r -> n, r -> d where
+    -- | Extracts the signature of a relation as a list of
+    -- attribute names.
     signature :: (Monad m) => r -> m [n]
+    -- | Extracts the tuples of a relation, as a list of lists of
+    -- data values. Each data list must have the same length as
+    -- in 'signature', and the data must be in the same order as
+    -- the attribute names in 'signature'.
     tuples :: (Monad m) => r -> m [[d]]
     make :: (Error e, MonadError e m) => [n] -> [[d]] -> m r
     union :: (Error e, MonadError e m) => r -> r -> m r

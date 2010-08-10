@@ -1,14 +1,18 @@
 name:           relational
-version:        0.0.1
+version:        0.0.2
 cabal-version:  >= 1.2 && < 2
 author:         Kevin Charter
 synopsis:       Type classes for, and simple implementations of, relations.
 build-type:     Simple
 
 library
-  exposed-modules: Relational.Class
+  exposed-modules: Relational.Class,
+                   Relational.Naive
   build-depends:   base >= 4 && < 5,
-                   mtl >= 1.0 && < 2
+                   containers >= 0.3 && < 1,
+                   mtl >= 1.0 && < 2,
+                   text >= 0.7 && < 1,
+                   vector >= 0.6 && < 1
   ghc-options:     -fwarn-incomplete-patterns
                    -fwarn-unused-imports
                    -- -prof -auto-all -caf-all
