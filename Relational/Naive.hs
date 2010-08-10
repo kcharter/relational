@@ -14,14 +14,18 @@ module Relational.Naive (AttrName,
 
 import Control.Monad (when, liftM, foldM)
 import Control.Monad.Error (Error, MonadError, strMsg, throwError)
-import qualified Data.Text as T
+import Data.List (intercalate)
 import qualified Data.Map as M
 import qualified Data.Set as S
+import qualified Data.Text as T
 import qualified Data.Vector as V
 
 import Relational.Class
 
-newtype AttrName = AttrName T.Text deriving (Eq, Ord, Show)
+newtype AttrName = AttrName T.Text deriving (Eq, Ord)
+
+instance Show AttrName where
+    show (AttrName n) = T.unpack n
 
 class ToAttrName a where
     toAttrName :: a -> AttrName
@@ -47,7 +51,11 @@ instance FromAttrName T.Text where
 instance FromAttrName String where
     fromAttrName (AttrName t) = T.unpack t
 
-newtype Signature = Signature (S.Set AttrName) deriving (Eq, Ord, Show)
+newtype Signature = Signature (S.Set AttrName) deriving (Eq, Ord)
+
+instance Show Signature where
+    show (Signature names) =
+        "{" ++ intercalate "," (map show (S.toList names)) ++ "}"
 
 fromList :: (ToAttrName a) => [a] -> Signature
 fromList = Signature . S.fromList . map toAttrName
