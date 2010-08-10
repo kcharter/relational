@@ -62,8 +62,19 @@ class (Ord n, Ord d) => Relational n d r | r -> n, r -> d where
     -- in 'signature', and the data must be in the same order as
     -- the attribute names in 'signature'.
     tuples :: (Monad m) => r -> m [[d]]
+    -- | Makes a relational value with a given signature and
+    -- given tuples. Implementations should throw errors if the list of
+    -- attribute names contains duplicates, or if any of
+    -- the tuples is the wrong length. It is not an
+    -- error for the tuple list to contain duplicates, although
+    -- the duplicates must appear only once in the tuples of
+    -- the result.
     make :: (Error e, MonadError e m) => [n] -> [[d]] -> m r
+    -- | Computes the relational union of two relational
+    -- values. The relational values must have equal signatures.
     union :: (Error e, MonadError e m) => r -> r -> m r
+    -- | Computes the relational difference of two relational
+    -- values. The relational values must have equal signatures.
     difference :: (Error e, MonadError e m) => r -> r -> m r
     rename :: (Error e, MonadError e m) => n -> n -> r -> m r
     project :: (Error e, MonadError e m) => [n] -> r -> m r
