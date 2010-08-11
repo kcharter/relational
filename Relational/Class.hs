@@ -76,6 +76,16 @@ class (Ord n, Ord d) => Relational n d r | r -> n, r -> d where
     -- | Computes the relational difference of two relational
     -- values. The relational values must have equal signatures.
     difference :: (Error e, MonadError e m) => r -> r -> m r
+    -- | Renames a single attribute. The result is the same as the
+    -- input relational value, except one attribute name has
+    -- disappeared and been replaced with another. The new attribute
+    -- name is now associated with the original attribute's data
+    -- values. Implementations may reorder the 'signature' and the
+    -- 'tuples'.
+    --
+    -- In @rename n m r@, it is an error if @n@ is not already in
+    -- @r@'s signature, and it is also an error if @m@ is already in
+    -- @r@'s signature, unless @n == m@.
     rename :: (Error e, MonadError e m) => n -> n -> r -> m r
     project :: (Error e, MonadError e m) => [n] -> r -> m r
     select :: (Error e, MonadError e m) => Condition n d m -> r -> m r
