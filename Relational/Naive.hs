@@ -74,6 +74,9 @@ toList (Signature s) = map fromAttrName (S.toList s)
 size :: Signature -> Int
 size (Signature s) = S.size s
 
+contains :: (ToAttrName a) => a -> Signature -> Bool
+contains n (Signature s) = S.member (toAttrName n) s
+
 data Relation a = Relation { relSig :: Signature,
                              relTupleSet :: S.Set (V.Vector a) } deriving (Eq, Ord, Show)
 
@@ -127,13 +130,31 @@ relCheckEqualSignatures r s =
                    " versus " ++
                    show sSig ++ ".")
 
+relRename :: (Error e, MonadError e m, Ord a) => AttrName -> AttrName -> Relation a -> m (Relation a)
+relRename n m r =
+    do when (not (inSignature n)) nNotInSignature
+       (if m == n
+        then return r
+        else do when (inSignature m) mInSignature
+                foldM (flip (relUnsafeAddTuple newAttrs)) (relEmpty newSig) (relTuples r))
+    where rSig = relSig r
+          inSignature name = contains name rSig
+          nNotInSignature = die (show n ++ " is not in signature " ++ show rSig ++ ".")
+          mInSignature = die (show m ++ " is already in signature " ++ show rSig ++ ".")
+          -- TODO: There must already be a function for replacing an
+          -- element of a list. Isn't there?
+          newAttrs = let (fst, nRest) = break (n==) (toList rSig)
+                     in fst ++ (m:(tail nRest))
+          newSig = fromList newAttrs
+              
+
 instance (Ord a) => Relational AttrName a (Relation a) where
     signature = return . relSignature
     tuples = return . relTuples
     make = relMake
     union = relUnion
     difference = relDifference
-    rename = todo
+    rename = relRename
     project = todo
     select = todo
     join = todo
