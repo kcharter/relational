@@ -1,11 +1,16 @@
 {-| An AST for conditions used in selections and joins. -}
 
-module Relational.Condition (Condition(..), RelOp(..), Expression(..)) where
+module Relational.Condition (Condition(..),
+                             RelOp(..),
+                             Expression(..),
+                             evalCondition) where
+
+import Control.Monad (liftM, liftM2)
 
 -- | Selection conditions, used in selections and joins.
 -- This is an abstract syntax for a simple language of boolean
 -- conditions on tuples. In practice, the third type parameter
--- should be some kind of error monad.
+-- @m@ should be some kind of error monad.
 data Condition n d m =
     CondTrue |
     -- ^ The true constant.
@@ -22,7 +27,7 @@ data Condition n d m =
     CondTupleTest ((n -> m d) -> m Bool)
     -- ^ Holds an arbitrary boolean-valued test.
     -- The test takes a lookup function that maps attribute
-    -- names to values in 'm' and returns a boolean in 'm'.
+    -- names to values in @m@ and returns a boolean in @m@.
 
 -- | The fundamental relational operators on attribute values.
 data RelOp = RelLT |
@@ -43,3 +48,40 @@ data Expression n d m =
     -- ^ The result of calling a function on a list of argument
     -- expressions.
 
+-- | Evaluates a condition in an arbitrary monad, given a lookup function.
+-- The lookup function retrieves attribute values from a tuple.
+--
+-- This function is a useful utility for those relational types where
+-- there is no notion of query optimization. For those types, we would
+-- evaluate conditions directly without any kind of
+-- transformation. The evaluation here is generic; all an
+-- implementation need do is provide a lookup function for each tuple.
+evalCondition :: (Monad m, Ord d) => (n -> m d) -> Condition n d m -> m Bool
+evalCondition lookup c =
+    case c of
+      CondTrue ->
+          return True
+      CondFalse ->
+          return False
+      CondNot c1 ->
+          not `liftM` evalSub c1
+      CondAnd c1 c2 ->
+          liftM2 (&&) (evalSub c1) (evalSub c2)
+      CondOr c1 c2 ->
+          liftM2 (||) (evalSub c1) (evalSub c2)
+      CondRel op e1 e2 ->
+          liftM2 (opFunc op) (evalExp e1) (evalExp e2)
+      CondTupleTest f ->
+          f lookup
+    where evalSub = evalCondition lookup
+          opFunc RelLT = (<)
+          opFunc RelEq = (==)
+          opFunc RelGT = (>)
+          evalExp exp =
+              case exp of
+                ExpConst v ->
+                    return v
+                ExpValueOf n ->
+                    lookup n
+                ExpCall f exps ->
+                    mapM evalExp exps >>= f
