@@ -25,7 +25,13 @@ data Condition n d m =
     -- names to values in 'm' and returns a boolean in 'm'.
 
 -- | The fundamental relational operators on attribute values.
-data RelOp = RelLT | RelEq | RelGT deriving (Eq, Ord, Show)
+data RelOp = RelLT |
+             -- ^ Less than.
+             RelEq |
+             -- ^ Equals.
+             RelGT
+             -- ^ Greater than.
+             deriving (Eq, Ord, Show)
 
 -- | An expression that produces a data value from an implicit tuple.
 data Expression n d m =
