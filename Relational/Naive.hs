@@ -13,7 +13,7 @@ module Relational.Naive (AttrName,
                          Signature, fromList, toList,
                          Relation) where
 
-import Control.Monad (when, unless, liftM, foldM)
+import Control.Monad (when, unless, liftM, foldM, filterM)
 import Control.Monad.Error (Error, MonadError, strMsg, throwError)
 import Data.List (intercalate)
 import qualified Data.Map as M
@@ -22,6 +22,7 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 
 import Relational.Class
+import Relational.Condition
 
 newtype AttrName = AttrName T.Text deriving (Eq, Ord)
 
@@ -164,6 +165,20 @@ relProject names r =
           oldNames = toList sig :: [AttrName]
           sig = relSig r
 
+relSelect :: (Error e, MonadError e m, Ord a) => Condition AttrName a m -> Relation a -> m (Relation a)
+relSelect c r =
+    (\ts -> (relEmpty rSig) {relTupleSet = ts}) `liftM` selectedTupleSet
+    where rSig = relSig r
+          selectedTupleSet = S.fromList `liftM` selectedTuples
+          selectedTuples = filterM selector (S.toList (relTupleSet r))
+          selector t = evalCondition (lookupFor t) c
+          lookupFor t n = (t V.!) `liftM` indexFor n
+          indexFor n =
+              maybe noSuchName return (M.lookup n indexForName)
+              where noSuchName = die ("No attribute " ++ show n ++
+                                      " in signature " ++ show rSig ++ ".")
+          indexForName = M.fromList (zip (toList rSig) [0..])
+
 instance (Ord a) => Relational AttrName a (Relation a) where
     signature = return . relSignature
     tuples = return . relTuples
@@ -172,7 +187,7 @@ instance (Ord a) => Relational AttrName a (Relation a) where
     difference = relDifference
     rename = relRename
     project = relProject
-    select = todo
+    select = relSelect
     join = todo
 
 die :: (Error e, MonadError e m) => String -> m a
