@@ -8,9 +8,10 @@ for unit tests and prototypes.
 -}
 
 module Relational.Naive (AttrName,
-                         ToAttrName, toAttrName,
-                         FromAttrName, fromAttrName,
-                         Signature, fromList, toList) where
+                         ToAttrName(..),
+                         FromAttrName(..),
+                         Signature, fromList, toList,
+                         Relation) where
 
 import Control.Monad (when, unless, liftM, foldM)
 import Control.Monad.Error (Error, MonadError, strMsg, throwError)
