@@ -94,6 +94,10 @@ class (Ord n, Ord d) => Relational n d r | r -> n, r -> d where
     -- in the signature of @r@. @names@ may contain duplicates, but
     -- the final signature contains each name only once.
     project :: (Error e, MonadError e m) => [n] -> r -> m r
+    -- | Computes a new relational value with the same signature as an
+    -- existing one, but with a subset of the existing tuples. The
+    -- subset comprises exactly those tuples that pass a given
+    -- condition.
     select :: (Error e, MonadError e m) => Condition n d m -> r -> m r
     join :: (Error e, MonadError e m) => Condition n d m -> r -> r -> m r
     join c x y = cartesianProduct x y >>= select c
