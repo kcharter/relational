@@ -83,10 +83,16 @@ class (Ord n, Ord d) => Relational n d r | r -> n, r -> d where
     -- values. Implementations may reorder the 'signature' and the
     -- 'tuples'.
     --
-    -- In @rename n m r@, it is an error if @n@ is not already in
-    -- @r@'s signature, and it is also an error if @m@ is already in
-    -- @r@'s signature, unless @n == m@.
+    -- In @rename n m r@, it is an error if @n@ is not in @r@'s
+    -- signature, and it is also an error if @m@ is already in @r@'s
+    -- signature, unless @n == m@.
     rename :: (Error e, MonadError e m) => n -> n -> r -> m r
+    -- | Computes a new relational value that contains a subset of
+    -- the attributes of another relational value.
+    --
+    -- In @project names r@, it is an error if any of @names@ is not
+    -- in the signature of @r@. @names@ may contain duplicates, but
+    -- the final signature contains each name only once.
     project :: (Error e, MonadError e m) => [n] -> r -> m r
     select :: (Error e, MonadError e m) => Condition n d m -> r -> m r
     join :: (Error e, MonadError e m) => Condition n d m -> r -> r -> m r
