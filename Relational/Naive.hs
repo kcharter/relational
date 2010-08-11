@@ -12,7 +12,7 @@ module Relational.Naive (AttrName,
                          FromAttrName, fromAttrName,
                          Signature, fromList, toList) where
 
-import Control.Monad (when, liftM, foldM)
+import Control.Monad (when, unless, liftM, foldM)
 import Control.Monad.Error (Error, MonadError, strMsg, throwError)
 import Data.List (intercalate)
 import qualified Data.Map as M
@@ -147,6 +147,21 @@ relRename n m r =
                      in fst ++ (m:(tail nRest))
           newSig = fromList newAttrs
               
+relProject :: (Error e, MonadError e m, Ord a) => [AttrName] -> Relation a -> m (Relation a)
+relProject names r =
+    do mapM_ checkSigContains names
+       foldM addNewTuple (relEmpty newSig) newTuples
+    where checkSigContains n =
+              unless (contains n sig) (die ("Attribute " ++ show n ++
+                                            " is not in signature " ++ show sig ++ "."))
+          addNewTuple = flip (relUnsafeAddTuple orderedNames)
+          orderedNames = toList newSig
+          newTuples = map dropValues (relTuples r)
+          dropValues = map snd . filter fst . (zip mask)
+          mask = map (flip contains newSig) oldNames
+          newSig = fromList names
+          oldNames = toList sig :: [AttrName]
+          sig = relSig r
 
 instance (Ord a) => Relational AttrName a (Relation a) where
     signature = return . relSignature
@@ -155,7 +170,7 @@ instance (Ord a) => Relational AttrName a (Relation a) where
     union = relUnion
     difference = relDifference
     rename = relRename
-    project = todo
+    project = relProject
     select = todo
     join = todo
 
