@@ -20,6 +20,12 @@ import Relational.Condition
 -- operations of the relational algebra: union, difference, attribute
 -- renaming, projection, selection, and either cartesian product or
 -- (theta) join.
+--
+-- A minimal implementation includes 'signature', 'tuples', 'make',
+-- 'union', 'difference', 'rename', 'project', 'select' and either
+-- 'join' or 'cartesianProduct'. A more sophisticated implementation
+-- that attempts to reduce the work done in 'join' will probably
+-- implement both 'join' and 'cartesianProduct'.
 class (Ord n, Ord d) => Relational n d r | r -> n, r -> d where
     -- | Extracts the signature of a relation as a list of
     -- attribute names.
@@ -66,8 +72,27 @@ class (Ord n, Ord d) => Relational n d r | r -> n, r -> d where
     -- subset comprises exactly those tuples that pass a given
     -- condition.
     select :: (Error e, MonadError e m) => Condition n d m -> r -> m r
+    -- | Computes a new relational value equivalent to the Cartesian
+    -- product of two others, followed by a selection. The default
+    -- implementation performs a 'select' on the result of
+    -- 'cartesianProduct'. However, implementations may attempt to
+    -- split the condition into parts specific to the argument
+    -- relational values, and then perform selections on the arguments
+    -- before doing a Cartesian product.
+    --
+    -- In @join c r s@, it is an error if the signatures of @r@ and
+    -- @s@ overlap.
     join :: (Error e, MonadError e m) => Condition n d m -> r -> r -> m r
     join c x y = cartesianProduct x y >>= select c
+    -- | Computes the relational Cartesian product of two relational
+    -- values. The signature of the result is the union of the two
+    -- input signatures, and the tuple set contains every
+    -- concatenation of tuples from the input relations. This method
+    -- is logically equivalent to @'join' 'CondTrue'@, and this is the
+    -- default implementation.
+    --
+    -- In @cartesianProduct r s@, it is an error if the signatures of
+    -- @r@ and @s@ overlap.
     cartesianProduct :: (Error e, MonadError e m) => r -> r -> m r
     cartesianProduct = join CondTrue
 
