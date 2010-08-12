@@ -1,0 +1,98 @@
+Here are some notes on making 'join c r s' faster than the naive
+implementation,
+
+ cartesianProduct r s >>= select c
+
+First, even within 'join' itself we can exploit some of the query
+optimization techniques mentioned in the Wikipedia article on
+Relational Algebra. By splitting the condition 'c' into a conjunction
+
+ c_r && c_s && c_rs
+
+where
+
+ c_r  uses attributes from r only
+ c_s  uses attributes from s only
+ c_rs uses attributes from both r and s
+
+we can then implement 'join' as
+
+ cartesianProduct r' s' >>= select c_rs
+ where r' = select c_r r
+       s' = select c_s s
+
+The idea is that r' and s' will never be larger than r and s, and may
+be much smaller, so the cartesian product will be smaller.
+
+Second, I think we might be able to do better than
+
+ cartesianProduct r' s' >>= select c_rs
+
+for certain kinds of c_rs. In particular, let's suppose that c_rs has
+the form
+
+ a_r == a_s
+
+where a_r and a_s are attributes of r and s, respectively.
+
+Suppose that we construct a map for 's' from values of 'a_s' to lists
+of tuples where 'a_s' has that value. In other words, on the fly we
+build an index for 's' keyed by the value of 'a_s'. Call this index
+'i_a_s'.
+
+We can then build the tuples for the join with condition
+
+ a_r == a_s
+
+by iterating through the tuples of 'r' and for each tuple 't_r'
+joining with just the tuples in
+
+ i_a_s ! t_r[a_r]
+
+Can we expect this to be faster than the naive implementation? Let
+
+ n = |r|, the number of tuples in r
+ m = |s|, the number of tuples in s
+
+and
+
+ q = |join c r s|, the number of tuples in the result.
+
+We'll count two fundamental operations: joining individual tuples, and
+performing comparisons on attribute values. For the naive
+implementation, we have
+
+ n*m  tuple joins
+
+ n*m  attribute comparisons
+
+since we compute all possible tuple joins and then perform a test on
+each joined tuple to filter out the ones we don't want.
+
+For the method where we build an index, we get
+
+  O(m log m) attribute comparisons to build the index i_a_s
+
+  O(n log m) attribute comparisons to do the lookups i_a_s ! t_r[a_r]
+
+  q tuple joins
+
+for a total of
+
+  (n + m) log m  comparisons
+
+  q tuple joins
+
+Note that we perform the minimum possible number of tuple joins, and
+we don't discard any of the joined tuples. Except for very small
+values of 'n' and 'm', we'll also perform fewer attribute comparisons.
+
+Instead of indexing 's' by the values of 'a_s', we could index 'r' by
+the values of 'a_r'. This will result in
+
+  (n + m) log n  comparisons
+
+  q tuple joins
+
+This means that to minimize the number of comparisons we should index
+the smaller relation.
