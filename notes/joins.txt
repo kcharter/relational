@@ -24,6 +24,9 @@ we can then implement 'join' as
 The idea is that r' and s' will never be larger than r and s, and may
 be much smaller, so the cartesian product will be smaller.
 
+Speeding up joins where the condition is an attribute equality
+--------------------------------------------------------------
+
 Second, I think we might be able to do better than
 
  cartesianProduct r' s' >>= select c_rs
@@ -96,3 +99,97 @@ the values of 'a_r'. This will result in
 
 This means that to minimize the number of comparisons we should index
 the smaller relation.
+
+Speeding up complex joins
+-------------------------
+
+Now, let's suppose that 'c_rs' is more complex than a single equality
+on attributes. If it's of the form
+
+ a_r == a_s && d_rs
+
+then we have two strategies we can take. We can compute joins for the
+sub-conditions separately, and then take their intersection, or we can
+compute the join for 'a_r == a_s', and then perform a 'select d_rs' on
+the result.
+
+Let's look at the problem a bit more generally. We can replace the
+logical connectives in join conditions with operations on whole
+relations. In fact, we can completely remove 'join' operations, but
+using the default form
+
+ join c r s = cartesianProduct r s >>= select c
+
+only as a last resort.
+
+ 1. join true r s == cartesianProduct r s
+
+ 2. join false r s == empty (sig r)
+
+ 3. join (not c) r s == (cartesianProduct r s `difference` join c r s)
+
+    this identity isn't really useful going left to right, but it
+    might be useful going right to left, or for a speculative
+    decomposition of a query.
+
+ 4. join (c || d) r s == join c r s `union` join d r s
+
+ 5. join (c && d) r s == join c r s `intersection` join d r s
+
+ 6. join (a_r `op` A) r s == cartesianProduct (select (a_r `op` A) r) s
+    join (A `op` a_r) r s == cartesianProduct (select (A `op` a_r) r) s
+
+    where `op` is one of '<', '==' or '>'
+
+ 7. join (a_s `op` A) r s == cartesianProduct r (select (a_s `op` A) s)
+    join (A `op` a_s) r s == cartesianProduct r (select (A `op` a_s) s)
+
+    where `op` is one of '<', '==' or '>'
+
+ 8. join (a_r == a_s) r s == special handling with index
+
+ 9. join (a_r > a_s) r s == special handling with index (see below)
+
+10. join (a_r < a_s) r s == special handling with index (see below)
+
+11. join c r s = cartesianProduct r s >>= select c
+
+    for any other kind of condition 'c'
+
+For cases (9) and (10), the index may be such that we can easily find
+all the entries where the key is less than or greater than a
+particular value. If this is the case, then indexing the smaller
+relation will likely be a benefit there too.
+
+The Data.Map.split function turns out to be just what we need!
+
+ Data.Map.split :: (Ord k) => k -> Map k a -> (Map k a, Map k a)
+
+ split k m
+
+returns an ordered pair containing two sub-maps of m, the first where
+all the keys are less than 'k', and the second where all the keys are
+greater than 'k'. This is exactly what we need for special handling.
+
+After we have decomposed all the 'join' operations, we may need to
+reduce the size of some of the Cartesian products. Our main tool for
+doing this will be some identities for the interaction between
+Cartesian product and other set operations.
+
+12. cartesianProduct r s `intersection` cartesianProduct t u
+
+      == cartesianProduct (r `intersection` t) (s `intersection` u)
+
+13. select c r `intersection` r == select c r
+
+14. select c r `union` r == r
+
+15. select c r `intersection` select d r
+      == select (c && d) r
+      == select c (select d r)
+      == select d (select c r)
+
+16. select c r `union` select d r == select (c || d) r
+
+This set of identities is incomplete. It's time to dig up some papers
+on relational query optimization.
