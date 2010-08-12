@@ -38,17 +38,17 @@ isEmpty :: Signature -> Bool
 isEmpty = liftSet S.null
 
 contains :: (ToAttrName a) => a -> Signature -> Bool
-contains n = liftSet (S.member (toAttrName n))
+contains = liftSet . S.member . toAttrName
 
 -- TODO: move Signature to a separate module and rename this
 sigUnion :: Signature -> Signature -> Signature
-sigUnion s r = Signature (liftSet2 S.union s r)
+sigUnion s = Signature . liftSet2 S.union s
 
 intersection :: Signature -> Signature -> Signature
-intersection s r = Signature (liftSet2 S.intersection s r)
+intersection s = Signature . liftSet2 S.intersection s
 
 liftSet :: (S.Set AttrName -> a) -> Signature -> a
-liftSet f = f . toSet
+liftSet = (. toSet)
 
 liftSet2 :: (S.Set AttrName -> S.Set AttrName -> a) -> Signature -> Signature -> a
 liftSet2 f s r = f (toSet s) (toSet r)

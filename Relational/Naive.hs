@@ -45,7 +45,7 @@ relUnsafeAddTuple names values soFar =
                    " values for " ++ show nameCount ++
                    " attribute names.")
           mkTuple =
-              V.fromList . M.elems . M.fromList . (zip names)
+              V.fromList . M.elems . M.fromList . zip names
 
 relMake :: (Error e, MonadError e m, Ord a) => [AttrName] -> [[a]] -> m (Relation a)
 relMake names tuples =
@@ -77,7 +77,7 @@ relCheckEqualSignatures r s =
 
 relRename :: (Error e, MonadError e m, Ord a) => AttrName -> AttrName -> Relation a -> m (Relation a)
 relRename n m r =
-    do when (not (inSignature n)) nNotInSignature
+    do unless (inSignature n) nNotInSignature
        (if m == n
         then return r
         else do when (inSignature m) mInSignature
@@ -89,7 +89,7 @@ relRename n m r =
           -- TODO: There must already be a function for replacing an
           -- element of a list. Isn't there?
           newAttrs = let (fst, nRest) = break (n==) (toList rSig)
-                     in fst ++ (m:(tail nRest))
+                     in fst ++ (m:tail nRest)
           newSig = fromList newAttrs
               
 relProject :: (Error e, MonadError e m, Ord a) => [AttrName] -> Relation a -> m (Relation a)
@@ -102,7 +102,7 @@ relProject names r =
           addNewTuple = flip (relUnsafeAddTuple orderedNames)
           orderedNames = toList newSig
           newTuples = map dropValues (relTuples r)
-          dropValues = map snd . filter fst . (zip mask)
+          dropValues = map snd . filter fst . zip mask
           mask = map (flip contains newSig) oldNames
           newSig = fromList names
           oldNames = toList sig :: [AttrName]
@@ -139,7 +139,7 @@ relCartesianProduct r s =
               where pairs = rPairs ++ sPairs
                     rPairs = mkPairs rNames tr
                     sPairs = mkPairs sNames ts
-                    mkPairs names tuple = zip names (V.toList tuple)
+                    mkPairs names = zip names . V.toList
           rNames = toList rSig :: [AttrName]
           sNames = toList sSig :: [AttrName]
           rTuples = tupleList r
