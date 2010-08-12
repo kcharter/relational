@@ -13,7 +13,7 @@ module Relational.Naive (AttrName,
                          Signature, fromList, toList,
                          Relation) where
 
-import Control.Monad (when, unless, liftM, foldM, filterM)
+import Control.Monad (when, unless, liftM, foldM, filterM, liftM2)
 import Control.Monad.Error (Error, MonadError, strMsg, throwError)
 import Data.List (intercalate)
 import qualified Data.Map as M
@@ -70,14 +70,33 @@ safeFromList = (Signature `liftM`) . foldM addName S.empty
           duplicateName n = die ("'" ++ n' ++ "' appears more than once.")
               where n' = fromAttrName n
 
+toSet :: Signature -> S.Set AttrName
+toSet (Signature s) = s
+
 toList :: (FromAttrName a) => Signature -> [a]
-toList (Signature s) = map fromAttrName (S.toList s)
+toList = map fromAttrName . S.toList . toSet
 
 size :: Signature -> Int
-size (Signature s) = S.size s
+size = liftSet S.size
+
+isEmpty :: Signature -> Bool
+isEmpty = liftSet S.null
 
 contains :: (ToAttrName a) => a -> Signature -> Bool
-contains n (Signature s) = S.member (toAttrName n) s
+contains n = liftSet (S.member (toAttrName n))
+
+-- TODO: move Signature to a separate module and rename this
+sigUnion :: Signature -> Signature -> Signature
+sigUnion s r = Signature (liftSet2 S.union s r)
+
+intersection :: Signature -> Signature -> Signature
+intersection s r = Signature (liftSet2 S.intersection s r)
+
+liftSet :: (S.Set AttrName -> a) -> Signature -> a
+liftSet f = f . toSet
+
+liftSet2 :: (S.Set AttrName -> S.Set AttrName -> a) -> Signature -> Signature -> a
+liftSet2 f s r = f (toSet s) (toSet r)
 
 data Relation a = Relation { relSig :: Signature,
                              relTupleSet :: S.Set (V.Vector a) } deriving (Eq, Ord, Show)
@@ -167,7 +186,7 @@ relProject names r =
 
 relSelect :: (Error e, MonadError e m, Ord a) => Condition AttrName a m -> Relation a -> m (Relation a)
 relSelect c r =
-    (\ts -> (relEmpty rSig) {relTupleSet = ts}) `liftM` selectedTupleSet
+    relPutTupleSet (relEmpty rSig) `liftM` selectedTupleSet
     where rSig = relSig r
           selectedTupleSet = S.fromList `liftM` selectedTuples
           selectedTuples = filterM selector (S.toList (relTupleSet r))
@@ -179,6 +198,33 @@ relSelect c r =
                                       " in signature " ++ show rSig ++ ".")
           indexForName = M.fromList (zip (toList rSig) [0..])
 
+relCartesianProduct :: (Error e, MonadError e m, Ord a) => Relation a -> Relation a -> m (Relation a)
+relCartesianProduct r s =
+    do unless disjointSigs overlappingSigs
+       return (relPutTupleSet (relEmpty newSig) newTupleSet)
+    where disjointSigs = isEmpty (intersection rSig sSig)
+          rSig = relSig r
+          sSig = relSig s
+          overlappingSigs = die ("Signature " ++ show rSig ++
+                                 " and signature " ++ show sSig ++
+                                 " overlap.")
+          newSig = sigUnion rSig sSig
+          newTupleSet = S.fromList (liftM2 mergeTuples rTuples sTuples)
+          mergeTuples tr ts =
+              V.fromList $ M.elems $ M.fromList pairs
+              where pairs = rPairs ++ sPairs
+                    rPairs = mkPairs rNames tr
+                    sPairs = mkPairs sNames ts
+                    mkPairs names tuple = zip names (V.toList tuple)
+          rNames = toList rSig :: [AttrName]
+          sNames = toList sSig :: [AttrName]
+          rTuples = tupleList r
+          sTuples = tupleList s
+          tupleList = S.toList . relTupleSet
+
+relPutTupleSet :: Relation a -> S.Set (V.Vector a) -> Relation a
+relPutTupleSet r tupleSet = r {relTupleSet = tupleSet}
+
 instance (Ord a) => Relational AttrName a (Relation a) where
     signature = return . relSignature
     tuples = return . relTuples
@@ -188,7 +234,7 @@ instance (Ord a) => Relational AttrName a (Relation a) where
     rename = relRename
     project = relProject
     select = relSelect
-    join = todo
+    cartesianProduct = relCartesianProduct
 
 die :: (Error e, MonadError e m) => String -> m a
 die = throwError . strMsg
