@@ -24,10 +24,10 @@ data Condition n d m =
     -- ^ Logical or.
     CondRel RelOp (Expression n d m) (Expression n d m) |
     -- ^ A relational test on two data expressions.
-    CondTupleTest ((n -> m d) -> m Bool)
-    -- ^ Holds an arbitrary boolean-valued test.
-    -- The test takes a lookup function that maps attribute
-    -- names to values in @m@ and returns a boolean in @m@.
+    CondCall ([d] -> m Bool) [Expression n d m]
+    -- ^ The result of calling a test function on a list of
+    -- argument values.
+
 
 -- | The fundamental relational operators on attribute values.
 data RelOp = RelLT |
@@ -71,8 +71,8 @@ evalCondition lookup c =
           liftM2 (||) (evalSub c1) (evalSub c2)
       CondRel op e1 e2 ->
           liftM2 (opFunc op) (evalExp e1) (evalExp e2)
-      CondTupleTest f ->
-          f lookup
+      CondCall f exps ->
+          mapM evalExp exps >>= f
     where evalSub = evalCondition lookup
           opFunc RelLT = (<)
           opFunc RelEq = (==)
