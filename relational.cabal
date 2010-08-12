@@ -1,5 +1,5 @@
 name:           relational
-version:        0.0.3
+version:        0.0.4
 cabal-version:  >= 1.2 && < 2
 author:         Kevin Charter
 synopsis:       Type classes for, and simple implementations of, relations.
@@ -8,7 +8,8 @@ build-type:     Simple
 library
   exposed-modules: Relational.Class,
                    Relational.Condition,
-                   Relational.Naive
+                   Relational.Naive,
+                   Relational.Naive.AttrName
   build-depends:   base >= 4 && < 5,
                    containers >= 0.3 && < 1,
                    mtl >= 1.0 && < 2,
