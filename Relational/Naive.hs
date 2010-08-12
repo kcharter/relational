@@ -7,8 +7,7 @@ for unit tests and prototypes.
 
 -}
 
-module Relational.Naive (Signature, fromList, toList,
-                         Relation) where
+module Relational.Naive (Relation) where
 
 import Control.Monad (when, unless, liftM, foldM, filterM, liftM2)
 import Control.Monad.Error (Error, MonadError)
@@ -20,18 +19,18 @@ import Relational.Class
 import Relational.Condition
 import Relational.Naive.AttrName
 import Relational.Naive.Error
-import Relational.Naive.Signature
+import qualified Relational.Naive.Signature as Sig
 
-data Relation a = Relation { relSig :: Signature,
+data Relation a = Relation { relSig :: Sig.Signature,
                              relTupleSet :: S.Set (V.Vector a) } deriving (Eq, Ord, Show)
 
 relSignature :: Relation a -> [AttrName]
-relSignature = toList . relSig
+relSignature = Sig.toList . relSig
 
 relTuples :: Relation a -> [[a]]
 relTuples = map V.toList . S.toList . relTupleSet
 
-relEmpty :: Signature -> Relation a
+relEmpty :: Sig.Signature -> Relation a
 relEmpty s = Relation { relSig = s, relTupleSet = S.empty }
 
 relUnsafeAddTuple :: (Error e, MonadError e m, Ord a) => [AttrName] -> [a] -> Relation a -> m (Relation a)
@@ -49,7 +48,7 @@ relUnsafeAddTuple names values soFar =
 
 relMake :: (Error e, MonadError e m, Ord a) => [AttrName] -> [[a]] -> m (Relation a)
 relMake names tuples =
-    do sig <- safeFromList names
+    do sig <- Sig.safeFromList names
        foldM (flip (relUnsafeAddTuple names)) (relEmpty sig) tuples
 
 relUnion :: (Error e, MonadError e m, Ord a) => Relation a -> Relation a -> m (Relation a)
@@ -83,29 +82,29 @@ relRename n m r =
         else do when (inSignature m) mInSignature
                 foldM (flip (relUnsafeAddTuple newAttrs)) (relEmpty newSig) (relTuples r))
     where rSig = relSig r
-          inSignature name = contains name rSig
+          inSignature name = Sig.contains name rSig
           nNotInSignature = die (show n ++ " is not in signature " ++ show rSig ++ ".")
           mInSignature = die (show m ++ " is already in signature " ++ show rSig ++ ".")
           -- TODO: There must already be a function for replacing an
           -- element of a list. Isn't there?
-          newAttrs = let (fst, nRest) = break (n==) (toList rSig)
+          newAttrs = let (fst, nRest) = break (n==) (Sig.toList rSig)
                      in fst ++ (m:tail nRest)
-          newSig = fromList newAttrs
+          newSig = Sig.fromList newAttrs
               
 relProject :: (Error e, MonadError e m, Ord a) => [AttrName] -> Relation a -> m (Relation a)
 relProject names r =
     do mapM_ checkSigContains names
        foldM addNewTuple (relEmpty newSig) newTuples
     where checkSigContains n =
-              unless (contains n sig) (die ("Attribute " ++ show n ++
-                                            " is not in signature " ++ show sig ++ "."))
+              unless (Sig.contains n sig) (die ("Attribute " ++ show n ++
+                                                " is not in signature " ++ show sig ++ "."))
           addNewTuple = flip (relUnsafeAddTuple orderedNames)
-          orderedNames = toList newSig
+          orderedNames = Sig.toList newSig
           newTuples = map dropValues (relTuples r)
           dropValues = map snd . filter fst . zip mask
-          mask = map (flip contains newSig) oldNames
-          newSig = fromList names
-          oldNames = toList sig :: [AttrName]
+          mask = map (flip Sig.contains newSig) oldNames
+          newSig = Sig.fromList names
+          oldNames = Sig.toList sig :: [AttrName]
           sig = relSig r
 
 relSelect :: (Error e, MonadError e m, Ord a) => Condition AttrName a m -> Relation a -> m (Relation a)
@@ -120,19 +119,19 @@ relSelect c r =
               maybe noSuchName return (M.lookup n indexForName)
               where noSuchName = die ("No attribute " ++ show n ++
                                       " in signature " ++ show rSig ++ ".")
-          indexForName = M.fromList (zip (toList rSig) [0..])
+          indexForName = M.fromList (zip (Sig.toList rSig) [0..])
 
 relCartesianProduct :: (Error e, MonadError e m, Ord a) => Relation a -> Relation a -> m (Relation a)
 relCartesianProduct r s =
     do unless disjointSigs overlappingSigs
        return (relPutTupleSet (relEmpty newSig) newTupleSet)
-    where disjointSigs = isEmpty (intersection rSig sSig)
+    where disjointSigs = Sig.isEmpty (Sig.intersection rSig sSig)
           rSig = relSig r
           sSig = relSig s
           overlappingSigs = die ("Signature " ++ show rSig ++
                                  " and signature " ++ show sSig ++
                                  " overlap.")
-          newSig = sigUnion rSig sSig
+          newSig = Sig.sigUnion rSig sSig
           newTupleSet = S.fromList (liftM2 mergeTuples rTuples sTuples)
           mergeTuples tr ts =
               V.fromList $ M.elems $ M.fromList pairs
@@ -140,8 +139,8 @@ relCartesianProduct r s =
                     rPairs = mkPairs rNames tr
                     sPairs = mkPairs sNames ts
                     mkPairs names = zip names . V.toList
-          rNames = toList rSig :: [AttrName]
-          sNames = toList sSig :: [AttrName]
+          rNames = Sig.toList rSig :: [AttrName]
+          sNames = Sig.toList sSig :: [AttrName]
           rTuples = tupleList r
           sTuples = tupleList s
           tupleList = S.toList . relTupleSet
