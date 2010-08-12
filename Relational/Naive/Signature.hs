@@ -1,5 +1,16 @@
-module Relational.Naive.Signature where
+{-|
 
+Signatures for relations. These are sets of attribute names with a
+smaller interface.
+
+This module is meant to be imported qualified, since it contains
+functions whose names clash with list functions in the Prelude. -}
+
+module Relational.Naive.Signature (Signature, fromList, safeFromList,
+                                   toList, empty, null, size,
+                                   contains, union, intersection) where
+
+import Prelude hiding (null)
 import Control.Monad (liftM, foldM, when)
 import Control.Monad.Error (Error, MonadError)
 import Data.List (intercalate)
@@ -31,18 +42,20 @@ toSet (Signature s) = s
 toList :: (FromAttrName a) => Signature -> [a]
 toList = map fromAttrName . S.toList . toSet
 
+empty :: Signature
+empty = Signature S.empty
+
 size :: Signature -> Int
 size = liftSet S.size
 
-isEmpty :: Signature -> Bool
-isEmpty = liftSet S.null
+null :: Signature -> Bool
+null = liftSet S.null
 
 contains :: (ToAttrName a) => a -> Signature -> Bool
 contains = liftSet . S.member . toAttrName
 
--- TODO: move Signature to a separate module and rename this
-sigUnion :: Signature -> Signature -> Signature
-sigUnion s = Signature . liftSet2 S.union s
+union :: Signature -> Signature -> Signature
+union s = Signature . liftSet2 S.union s
 
 intersection :: Signature -> Signature -> Signature
 intersection s = Signature . liftSet2 S.intersection s

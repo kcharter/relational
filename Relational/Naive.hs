@@ -125,13 +125,13 @@ relCartesianProduct :: (Error e, MonadError e m, Ord a) => Relation a -> Relatio
 relCartesianProduct r s =
     do unless disjointSigs overlappingSigs
        return (relPutTupleSet (relEmpty newSig) newTupleSet)
-    where disjointSigs = Sig.isEmpty (Sig.intersection rSig sSig)
+    where disjointSigs = Sig.null (Sig.intersection rSig sSig)
           rSig = relSig r
           sSig = relSig s
           overlappingSigs = die ("Signature " ++ show rSig ++
                                  " and signature " ++ show sSig ++
                                  " overlap.")
-          newSig = Sig.sigUnion rSig sSig
+          newSig = Sig.union rSig sSig
           newTupleSet = S.fromList (liftM2 mergeTuples rTuples sTuples)
           mergeTuples tr ts =
               V.fromList $ M.elems $ M.fromList pairs
