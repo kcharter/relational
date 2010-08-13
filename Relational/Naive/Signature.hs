@@ -8,7 +8,7 @@ functions whose names clash with list functions in the Prelude. -}
 
 module Relational.Naive.Signature (Signature, fromList, safeFromList,
                                    toList, empty, null, size,
-                                   contains, union, intersection) where
+                                   contains, disjoint, union, intersection) where
 
 import Prelude hiding (null)
 import Control.Monad (liftM, foldM, when)
@@ -59,6 +59,9 @@ union s = Signature . liftSet2 S.union s
 
 intersection :: Signature -> Signature -> Signature
 intersection s = Signature . liftSet2 S.intersection s
+
+disjoint :: Signature -> Signature -> Bool
+disjoint s1 s2 = null (s1 `intersection` s2)
 
 liftSet :: (S.Set AttrName -> a) -> Signature -> a
 liftSet = (. toSet)
