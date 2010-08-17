@@ -9,6 +9,7 @@ import qualified Relational.Naive.Signature as Sig
 
 import Relational.Naive.AttrName
 import AttrNameGen
+import MonadUtil
 
 instance Arbitrary Sig.Signature where
     arbitrary = Sig.fromList `liftM` (arbitrary :: Gen [AttrName])
@@ -31,7 +32,3 @@ signatureAndNewName g =
        n <- untilM (not . flip Sig.contains s) arbitrary
        return (s, n)
 
-untilM :: (Monad m) => (a -> Bool) -> m a -> m a
-untilM test m =
-    do x <- m
-       if test x then return x else untilM test m
