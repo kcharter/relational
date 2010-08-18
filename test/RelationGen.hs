@@ -8,7 +8,7 @@ import qualified Relational.Naive.Signature as Sig
 import qualified Relational.Class as C
 import qualified Relational.Naive as RN
 
-import SignatureGen
+import SignatureGen()
 
 instance (Ord a, Arbitrary a) => Arbitrary (RN.Relation a) where
     arbitrary = join (relationOfSize arbitrary `liftM` choose (0,6))

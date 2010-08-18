@@ -8,7 +8,7 @@ import Test.QuickCheck
 import qualified Relational.Naive.Signature as Sig
 
 import Relational.Naive.AttrName
-import AttrNameGen
+import AttrNameGen()
 import MonadUtil
 
 instance Arbitrary Sig.Signature where
