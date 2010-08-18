@@ -2,3 +2,7 @@
 *~
 # cabal's dist directory
 dist
+
+# build-related stuff in the test directory
+test/build
+test/runtests
