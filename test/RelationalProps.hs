@@ -1,7 +1,26 @@
 module RelationalProps where
 
 import Control.Monad (liftM)
+import Control.Monad.Error (Error, MonadError)
+import qualified Data.Map as DM
+import qualified Data.Set as DS
+
 import qualified Relational.Class as R
+
+prop_makeSigAndTuples :: (R.Relational n d r) => ([n] -> [[d]] -> Either String r) -> ([n], [[d]]) -> Bool
+prop_makeSigAndTuples mk = noErr . propM_makeSigAndTuples mk
+
+propM_makeSigAndTuples :: (R.Relational n d r, Error e, MonadError e m) =>
+                          ([n] -> [[d]] -> m r) -> ([n],[[d]]) -> m Bool
+propM_makeSigAndTuples mk (names, tuples) =
+    do r <- mk names tuples
+       names' <- R.signature r
+       tuples' <- R.tuples r
+       return (toSetOfMaps names tuples == toSetOfMaps names' tuples')
+    where toSetOfMaps names tuples =
+              DS.fromList (map (DM.fromList . zip names) tuples)
+
+
 
 prop_canRenameExistingToItself :: (R.Relational n d r, Eq r) => r -> Bool
 prop_canRenameExistingToItself r =

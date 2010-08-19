@@ -8,11 +8,17 @@ import qualified Relational.Naive.Signature as Sig
 import qualified Relational.Class as C
 import qualified Relational.Naive as RN
 
-import SignatureGen()
+import SignatureGen
 
 instance (Ord a, Arbitrary a) => Arbitrary (RN.Relation a) where
     arbitrary = join (relationOfSize arbitrary `liftM` choose (0,6))
 
+inputs :: (Arbitrary a) => Int -> Gen ([AttrName], [[a]])
+inputs maxAttrs =
+    do names <- Sig.toList `liftM` signatures maxAttrs
+       tuples <- listOf (vectorOf (length names) arbitrary)
+       return (names, tuples)
+       
 -- | Generates a relation over a type of generated data, with a given
 -- signature and a desired number of tuples. The desired size is a
 -- suggested approximate size only, since the nature of the value
