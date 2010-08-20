@@ -49,6 +49,11 @@ class (Ord n, Ord d) => Relational n d r | r -> n, r -> d where
     -- | Computes the relational difference of two relational
     -- values. The relational values must have equal signatures.
     difference :: (Error e, MonadError e m) => r -> r -> m r
+    -- | Computes the relational intersection of two relational
+    -- values. The relational values must have equal signatures.
+    -- The default implementation uses 'difference'.
+    intersection :: (Error e, MonadError e m) => r -> r -> m r
+    intersection r s = (r `difference`) =<< (r `difference` s)
     -- | Renames a single attribute. The result is the same as the
     -- input relational value, except one attribute name has
     -- disappeared and been replaced with another. The new attribute
@@ -95,5 +100,4 @@ class (Ord n, Ord d) => Relational n d r | r -> n, r -> d where
     -- @r@ and @s@ overlap.
     cartesianProduct :: (Error e, MonadError e m) => r -> r -> m r
     cartesianProduct = join CondTrue
-
     
