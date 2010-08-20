@@ -83,16 +83,14 @@ prop_unionIsCommutative = noErr . propM_unionIsCommutative
 
 propM_unionIsCommutative :: (R.Relational n d r, Eq r, Error e, MonadError e m) =>
                             (r, r) -> m Bool
-propM_unionIsCommutative (r, s) =
-    liftM2 (==) (R.union r s) (R.union s r)
+propM_unionIsCommutative = propM_commutative R.union
 
 prop_unionIsAssociative :: (R.Relational n d r, Eq r) => (r, r, r) -> Bool
 prop_unionIsAssociative = noErr . propM_unionIsAssociative
 
 propM_unionIsAssociative :: (R.Relational n d r, Eq r, Error e, MonadError e m) =>
                             (r, r, r) -> m Bool
-propM_unionIsAssociative (r, s, t) =
-    liftM2 (==) (R.union r s >>= flip R.union t) (R.union r =<< R.union s t)
+propM_unionIsAssociative = propM_associative R.union
 
 prop_unionLikeSetUnion :: (R.Relational n d r) => (r, r) -> Bool
 prop_unionLikeSetUnion = noErr . propM_unionLikeSetUnion
@@ -108,6 +106,12 @@ emptyLike r = R.signature r >>= flip R.make []
 tupleSet :: (R.Relational n d r, Error e, MonadError e m) => r -> m (DS.Set [d])
 tupleSet = liftM DS.fromList . R.tuples
 
+propM_commutative :: (Monad m, Eq a) => (a -> a -> m a) -> (a, a) -> m Bool
+propM_commutative f (x,y) = liftM2 (==) (f x y) (f y x)
+
+propM_associative :: (Monad m, Eq a) => (a -> a -> m a) -> (a, a, a) -> m Bool
+propM_associative f (x,y,z) =
+    liftM2 (==) (f x y >>= flip f z) (f x =<< f y z)
+
 noErr :: Either String b -> Bool
 noErr = either (const False) (const True)
-    
