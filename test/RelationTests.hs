@@ -21,6 +21,7 @@ run = do quickCheck $ forAll (inputs 5) (prop_makeSigAndTuples makeIntRelation :
          quickCheck $ forAll unionCompatiblePair (prop_unionIsCommutative :: (Relation Int, Relation Int) -> Bool)
          quickCheck $ forAll unionCompatibleTriple (prop_unionIsAssociative :: (Relation Int, Relation Int, Relation Int) -> Bool)
          quickCheck $ forAll unionCompatiblePair (prop_unionLikeSetUnion :: (Relation Int, Relation Int) -> Bool)
+         quickCheck $ forAll unionCompatiblePair (prop_intersectionLikeSetIntersection :: (Relation Int, Relation Int) -> Bool)
 
 makeIntRelation :: [AttrName] -> [[Int]] -> Either String (Relation Int)
 makeIntRelation = makeRelation

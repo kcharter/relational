@@ -69,7 +69,6 @@ propM_unionWithSelfIsSelf :: (R.Relational n d r, Eq r, Error e, MonadError e m)
 propM_unionWithSelfIsSelf r =
     (r==) `liftM` R.union r r
 
-
 prop_unionWithEmptyIsSelf :: (R.Relational n d r, Eq r) => r -> Bool
 prop_unionWithEmptyIsSelf = noErr . propM_unionWithEmptyIsSelf
 
@@ -99,6 +98,12 @@ propM_unionLikeSetUnion :: (R.Relational n d r, Error e, MonadError e m) => (r, 
 propM_unionLikeSetUnion (r, s) =
     liftM2 (==) (R.union r s >>= tupleSet) (liftM2 DS.union (tupleSet r) (tupleSet s))
 
+prop_intersectionLikeSetIntersection :: (R.Relational n d r) => (r, r) -> Bool
+prop_intersectionLikeSetIntersection = noErr . propM_intersectionLikeSetIntersection
+
+propM_intersectionLikeSetIntersection :: (R.Relational n d r, Error e, MonadError e m) => (r, r) -> m Bool
+propM_intersectionLikeSetIntersection (r, s) =
+    liftM2 (==) (R.intersection r s >>= tupleSet) (liftM2 DS.intersection (tupleSet r) (tupleSet s))
 
 emptyLike :: (R.Relational n d r, Error e, MonadError e m) => r -> m r
 emptyLike r = R.signature r >>= flip R.make []
