@@ -1,6 +1,6 @@
 module RelationalProps where
 
-import Control.Monad (liftM)
+import Control.Monad (liftM, liftM2)
 import Control.Monad.Error (Error, MonadError)
 import qualified Data.Map as DM
 import qualified Data.Set as DS
@@ -60,6 +60,53 @@ propM_canRemoveIntermediateRenames (r, n, m) =
                 r''' <- R.rename (head s) m r
                 return (r' == r'''))
                
+
+prop_unionWithSelfIsSelf :: (R.Relational n d r, Eq r) => r -> Bool
+prop_unionWithSelfIsSelf = noErr . propM_unionWithSelfIsSelf
+
+propM_unionWithSelfIsSelf :: (R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                             r -> m Bool
+propM_unionWithSelfIsSelf r =
+    (r==) `liftM` R.union r r
+
+
+prop_unionWithEmptyIsSelf :: (R.Relational n d r, Eq r) => r -> Bool
+prop_unionWithEmptyIsSelf = noErr . propM_unionWithEmptyIsSelf
+
+propM_unionWithEmptyIsSelf :: (R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                              r -> m Bool
+propM_unionWithEmptyIsSelf r =
+    (r==) `liftM` (R.union r =<< emptyLike r)
+
+prop_unionIsCommutative :: (R.Relational n d r, Eq r) => (r, r) -> Bool
+prop_unionIsCommutative = noErr . propM_unionIsCommutative
+
+propM_unionIsCommutative :: (R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                            (r, r) -> m Bool
+propM_unionIsCommutative (r, s) =
+    liftM2 (==) (R.union r s) (R.union s r)
+
+prop_unionIsAssociative :: (R.Relational n d r, Eq r) => (r, r, r) -> Bool
+prop_unionIsAssociative = noErr . propM_unionIsAssociative
+
+propM_unionIsAssociative :: (R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                            (r, r, r) -> m Bool
+propM_unionIsAssociative (r, s, t) =
+    liftM2 (==) (R.union r s >>= flip R.union t) (R.union r =<< R.union s t)
+
+prop_unionLikeSetUnion :: (R.Relational n d r) => (r, r) -> Bool
+prop_unionLikeSetUnion = noErr . propM_unionLikeSetUnion
+
+propM_unionLikeSetUnion :: (R.Relational n d r, Error e, MonadError e m) => (r, r) -> m Bool
+propM_unionLikeSetUnion (r, s) =
+    liftM2 (==) (R.union r s >>= tupleSet) (liftM2 DS.union (tupleSet r) (tupleSet s))
+
+
+emptyLike :: (R.Relational n d r, Error e, MonadError e m) => r -> m r
+emptyLike r = R.signature r >>= flip R.make []
+
+tupleSet :: (R.Relational n d r, Error e, MonadError e m) => r -> m (DS.Set [d])
+tupleSet = liftM DS.fromList . R.tuples
 
 noErr :: Either String b -> Bool
 noErr = either (const False) (const True)
