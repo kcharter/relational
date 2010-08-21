@@ -97,6 +97,36 @@ prop_unionLikeSetUnion = noErr . propM_unionLikeSetUnion
 propM_unionLikeSetUnion :: (R.Relational n d r, Error e, MonadError e m) => (r, r) -> m Bool
 propM_unionLikeSetUnion = propM_likeSetOp R.union DS.union
 
+prop_differenceWithSelfIsEmpty :: (R.Relational n d r, Eq r) => r -> Bool
+prop_differenceWithSelfIsEmpty = noErr . propM_differenceWithSelfIsEmpty
+
+propM_differenceWithSelfIsEmpty :: (R.Relational n d r, Eq r, Error e, MonadError e m) => r -> m Bool
+propM_differenceWithSelfIsEmpty r =
+    liftM2 (==) (R.difference r r) (emptyLike r)
+
+prop_differenceWithEmptyIsSelf :: (R.Relational n d r, Eq r) => r -> Bool
+prop_differenceWithEmptyIsSelf = noErr . propM_differenceWithEmptyIsSelf
+
+propM_differenceWithEmptyIsSelf :: (R.Relational n d r, Eq r, Error e, MonadError e m) => r -> m Bool
+propM_differenceWithEmptyIsSelf r =
+    (r==) `liftM` (R.difference r =<< emptyLike r)
+
+prop_differenceDeMorgan1 :: (R.Relational n d r, Eq r) => (r, r, r) -> Bool
+prop_differenceDeMorgan1 = noErr . propM_differenceDeMorgan1
+
+propM_differenceDeMorgan1 :: (R.Relational n d r, Eq r, Error e, MonadError e m) => (r, r, r) -> m Bool
+propM_differenceDeMorgan1 (r, s, t) =
+    liftM2 (==) (R.difference r =<< R.intersection s t)
+               (join (liftM2 R.union (R.difference r s) (R.difference r t)))
+
+prop_differenceDeMorgan2 :: (R.Relational n d r, Eq r) => (r, r, r) -> Bool
+prop_differenceDeMorgan2 = noErr . propM_differenceDeMorgan1
+
+propM_differenceDeMorgan2 :: (R.Relational n d r, Eq r, Error e, MonadError e m) => (r, r, r) -> m Bool
+propM_differenceDeMorgan2 (r, s, t) =
+    liftM2 (==) (R.difference r =<< R.union s t)
+               (join (liftM2 R.intersection (R.difference r s) (R.difference r t)))
+
 prop_differenceLikeSetDifference :: (R.Relational n d r) => (r, r) -> Bool
 prop_differenceLikeSetDifference = noErr . propM_differenceLikeSetDifference
 
