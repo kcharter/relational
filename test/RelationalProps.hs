@@ -1,6 +1,6 @@
 module RelationalProps where
 
-import Control.Monad (liftM, liftM2)
+import Control.Monad (liftM, liftM2, join)
 import Control.Monad.Error (Error, MonadError)
 import qualified Data.Map as DM
 import qualified Data.Set as DS
@@ -102,6 +102,38 @@ prop_differenceLikeSetDifference = noErr . propM_differenceLikeSetDifference
 
 propM_differenceLikeSetDifference :: (R.Relational n d r, Error e, MonadError e m) => (r, r) -> m Bool
 propM_differenceLikeSetDifference = propM_likeSetOp R.difference DS.difference
+
+prop_intersectionWithSelfIsSelf :: (R.Relational n d r, Eq r) => r -> Bool
+prop_intersectionWithSelfIsSelf = noErr . propM_intersectionWithSelfIsSelf
+
+propM_intersectionWithSelfIsSelf :: (R.Relational n d r, Eq r, Error e, MonadError e m) => r -> m Bool
+propM_intersectionWithSelfIsSelf r = (r==) `liftM` R.intersection r r
+
+prop_intersectionWithEmptyIsEmpty :: (R.Relational n d r, Eq r) => r -> Bool
+prop_intersectionWithEmptyIsEmpty = noErr . propM_intersectionWithEmptyIsEmpty
+
+propM_intersectionWithEmptyIsEmpty :: (R.Relational n d r, Eq r, Error e, MonadError e m) => r -> m Bool
+propM_intersectionWithEmptyIsEmpty r = (r==) `liftM` (R.intersection r =<< emptyLike r)
+
+prop_intersectionIsCommutative :: (R.Relational n d r, Eq r) => (r, r) -> Bool
+prop_intersectionIsCommutative = noErr . propM_intersectionIsCommutative
+
+propM_intersectionIsCommutative :: (R.Relational n d r, Eq r, Error e, MonadError e m) => (r, r) -> m Bool
+propM_intersectionIsCommutative = propM_commutative R.intersection
+
+prop_intersectionIsAssociative :: (R.Relational n d r, Eq r) => (r, r, r) -> Bool
+prop_intersectionIsAssociative = noErr . propM_intersectionIsAssociative
+
+propM_intersectionIsAssociative :: (R.Relational n d r, Eq r, Error e, MonadError e m) => (r, r, r) -> m Bool
+propM_intersectionIsAssociative = propM_associative R.intersection
+
+prop_intersectionDistributesOverUnion :: (R.Relational n d r, Eq r) => (r, r, r) -> Bool
+prop_intersectionDistributesOverUnion = noErr . propM_intersectionDistributesOverUnion
+
+propM_intersectionDistributesOverUnion :: (R.Relational n d r, Eq r, Error e, MonadError e m) => (r, r, r) -> m Bool
+propM_intersectionDistributesOverUnion (r, s, t) =
+    liftM2 (==) (R.intersection r =<< R.union s t)
+               (join (liftM2 R.union (R.intersection r s) (R.intersection r t)))
 
 prop_intersectionLikeSetIntersection :: (R.Relational n d r) => (r, r) -> Bool
 prop_intersectionLikeSetIntersection = noErr . propM_intersectionLikeSetIntersection

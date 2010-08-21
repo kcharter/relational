@@ -22,6 +22,11 @@ run = do quickCheck $ forAll (inputs 5) (prop_makeSigAndTuples makeIntRelation :
          quickCheck $ forAll unionCompatibleTriple (prop_unionIsAssociative :: (Relation Int, Relation Int, Relation Int) -> Bool)
          quickCheck $ forAll unionCompatiblePair (prop_unionLikeSetUnion :: (Relation Int, Relation Int) -> Bool)
          quickCheck $ forAll unionCompatiblePair (prop_differenceLikeSetDifference :: (Relation Int, Relation Int) -> Bool)
+         quickCheck (prop_intersectionWithSelfIsSelf :: Relation Int -> Bool)
+         quickCheck (prop_intersectionWithEmptyIsEmpty :: Relation Int -> Bool)
+         quickCheck $ forAll unionCompatiblePair (prop_intersectionIsCommutative :: (Relation Int, Relation Int) -> Bool)
+         quickCheck $ forAll unionCompatibleTriple (prop_intersectionIsAssociative :: (Relation Int, Relation Int, Relation Int) -> Bool)
+         quickCheck $ forAll unionCompatibleTriple (prop_intersectionDistributesOverUnion :: (Relation Int, Relation Int, Relation Int) -> Bool)
          quickCheck $ forAll unionCompatiblePair (prop_intersectionLikeSetIntersection :: (Relation Int, Relation Int) -> Bool)
 
 makeIntRelation :: [AttrName] -> [[Int]] -> Either String (Relation Int)
