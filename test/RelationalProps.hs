@@ -95,21 +95,26 @@ prop_unionLikeSetUnion :: (R.Relational n d r) => (r, r) -> Bool
 prop_unionLikeSetUnion = noErr . propM_unionLikeSetUnion
 
 propM_unionLikeSetUnion :: (R.Relational n d r, Error e, MonadError e m) => (r, r) -> m Bool
-propM_unionLikeSetUnion (r, s) =
-    liftM2 (==) (R.union r s >>= tupleSet) (liftM2 DS.union (tupleSet r) (tupleSet s))
+propM_unionLikeSetUnion = propM_likeSetOp R.union DS.union
 
 prop_intersectionLikeSetIntersection :: (R.Relational n d r) => (r, r) -> Bool
 prop_intersectionLikeSetIntersection = noErr . propM_intersectionLikeSetIntersection
 
 propM_intersectionLikeSetIntersection :: (R.Relational n d r, Error e, MonadError e m) => (r, r) -> m Bool
-propM_intersectionLikeSetIntersection (r, s) =
-    liftM2 (==) (R.intersection r s >>= tupleSet) (liftM2 DS.intersection (tupleSet r) (tupleSet s))
+propM_intersectionLikeSetIntersection = propM_likeSetOp R.intersection DS.intersection
 
 emptyLike :: (R.Relational n d r, Error e, MonadError e m) => r -> m r
 emptyLike r = R.signature r >>= flip R.make []
 
 tupleSet :: (R.Relational n d r, Error e, MonadError e m) => r -> m (DS.Set [d])
 tupleSet = liftM DS.fromList . R.tuples
+
+propM_likeSetOp :: (R.Relational n d r, Error e, MonadError e m) =>
+                   (r -> r -> m r)
+                       -> (DS.Set [d] -> DS.Set [d] -> DS.Set [d])
+                       -> (r, r) -> m Bool
+propM_likeSetOp f sf (r, s) =
+    liftM2 (==) (f r s >>= tupleSet) (liftM2 sf (tupleSet r) (tupleSet s))
 
 propM_commutative :: (Monad m, Eq a) => (a -> a -> m a) -> (a, a) -> m Bool
 propM_commutative f (x,y) = liftM2 (==) (f x y) (f y x)
