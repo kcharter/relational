@@ -97,6 +97,12 @@ prop_unionLikeSetUnion = noErr . propM_unionLikeSetUnion
 propM_unionLikeSetUnion :: (R.Relational n d r, Error e, MonadError e m) => (r, r) -> m Bool
 propM_unionLikeSetUnion = propM_likeSetOp R.union DS.union
 
+prop_differenceLikeSetDifference :: (R.Relational n d r) => (r, r) -> Bool
+prop_differenceLikeSetDifference = noErr . propM_differenceLikeSetDifference
+
+propM_differenceLikeSetDifference :: (R.Relational n d r, Error e, MonadError e m) => (r, r) -> m Bool
+propM_differenceLikeSetDifference = propM_likeSetOp R.difference DS.difference
+
 prop_intersectionLikeSetIntersection :: (R.Relational n d r) => (r, r) -> Bool
 prop_intersectionLikeSetIntersection = noErr . propM_intersectionLikeSetIntersection
 
