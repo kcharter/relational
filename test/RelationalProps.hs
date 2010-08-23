@@ -119,6 +119,14 @@ propM_differenceDeMorgan1 (r, s, t) =
     liftM2 (==) (R.difference r =<< R.intersection s t)
                (join (liftM2 R.union (R.difference r s) (R.difference r t)))
 
+
+prop_differenceEmptyDiffAnyIsEmpty :: (R.Relational n d r, Eq r) => r -> Bool
+prop_differenceEmptyDiffAnyIsEmpty = noErr . propM_differenceEmptyDiffAnyIsEmpty
+
+propM_differenceEmptyDiffAnyIsEmpty :: (R.Relational n d r, Eq r, Error e, MonadError e m) => r -> m Bool
+propM_differenceEmptyDiffAnyIsEmpty r =
+    liftM2 (==) (emptyLike r) (flip R.difference r =<< (emptyLike r))
+
 prop_differenceDeMorgan2 :: (R.Relational n d r, Eq r) => (r, r, r) -> Bool
 prop_differenceDeMorgan2 = noErr . propM_differenceDeMorgan1
 
@@ -126,6 +134,64 @@ propM_differenceDeMorgan2 :: (R.Relational n d r, Eq r, Error e, MonadError e m)
 propM_differenceDeMorgan2 (r, s, t) =
     liftM2 (==) (R.difference r =<< R.union s t)
                (join (liftM2 R.intersection (R.difference r s) (R.difference r t)))
+
+-- the next "differencePM" properties are from the properties of set
+-- difference as listed on PlanetMath at
+-- http://planetmath.org/encyclopedia/PropertiesOfSetDifference.html
+
+prop_differencePM7a :: (R.Relational n d r, Eq r) => (r, r) -> Bool
+prop_differencePM7a = noErr . propM_differencePM7a
+
+-- | property 7a: A - (A & B) = A - B
+propM_differencePM7a :: (R.Relational n d r, Eq r, Error e, MonadError e m) => (r, r) -> m Bool
+propM_differencePM7a (r, s) =
+    liftM2 (==) (R.difference r =<< (R.intersection r s)) (R.difference r s)
+
+prop_differencePM7b :: (R.Relational n d r, Eq r) => (r, r) -> Bool
+prop_differencePM7b = noErr . propM_differencePM7b
+
+-- | property 7b: (A + B) - B = A - B
+propM_differencePM7b :: (R.Relational n d r, Eq r, Error e, MonadError e m) => (r, r) -> m Bool
+propM_differencePM7b (r, s) =
+    liftM2 (==) (flip R.difference s =<< (R.union r s)) (R.difference r s)
+
+prop_differencePM8 :: (R.Relational n d r, Eq r) => (r, r, r) -> Bool
+prop_differencePM8 = noErr . propM_differencePM8
+
+-- | property 8: (A & B) - C = (A - C) & (B - C)
+propM_differencePM8 :: (R.Relational n d r, Eq r, Error e, MonadError e m) => (r, r, r) -> m Bool
+propM_differencePM8 (r, s, t) =
+    liftM2 (==) (flip R.difference t =<< (R.intersection r s))
+               (join $ liftM2 R.intersection  (R.difference r t) (R.difference s t))
+
+prop_differencePM9 :: (R.Relational n d r, Eq r) => (r, r, r) -> Bool
+prop_differencePM9 = noErr . propM_differencePM9
+
+-- | property 9: A & (B - C) = (A & B) - (A & C)
+propM_differencePM9 :: (R.Relational n d r, Eq r, Error e, MonadError e m) => (r, r, r) -> m Bool
+propM_differencePM9 (r, s, t) =
+    liftM2 (==) (R.intersection r =<< R.difference s t)
+               (join $ liftM2 R.difference (R.intersection r s) (R.intersection s t))
+
+prop_differencePM10 :: (R.Relational n d r, Eq r) => (r, r, r, r) -> Bool
+prop_differencePM10 = noErr . propM_differencePM10
+
+-- | property 10: (A - B) & (C - D) = (C - B) & (A - D)
+propM_differencePM10 :: (R.Relational n d r, Eq r, Error e, MonadError e m) => (r, r, r, r) -> m Bool
+propM_differencePM10 (r, s, t, u) =
+    liftM2 (==)
+           (join $ liftM2 R.intersection (R.difference r s) (R.difference t u))
+           (join $ liftM2 R.intersection (R.difference t s) (R.difference r u))
+
+prop_differencePM11 :: (R.Relational n d r, Eq r) => (r, r, r, r) -> Bool
+prop_differencePM11 = noErr . propM_differencePM11
+
+-- | property 11: (A - B) & (C - D) = (A & B) - (B + D)
+propM_differencePM11 :: (R.Relational n d r, Eq r, Error e, MonadError e m) => (r, r, r, r) -> m Bool
+propM_differencePM11 (r, s, t, u) =
+    liftM2 (==)
+           (join $ liftM2 R.intersection (R.difference r s) (R.difference t u))
+           (join $ liftM2 R.difference (R.intersection r t) (R.union s u))
 
 prop_differenceLikeSetDifference :: (R.Relational n d r) => (r, r) -> Bool
 prop_differenceLikeSetDifference = noErr . propM_differenceLikeSetDifference

@@ -1,6 +1,6 @@
 module RelationGen where
 
-import Control.Monad (liftM, liftM2, liftM3, join)
+import Control.Monad (liftM, liftM2, liftM3, liftM4, join)
 import Test.QuickCheck
 
 import Relational.Naive.AttrName
@@ -29,6 +29,10 @@ unionCompatiblePair =
 unionCompatibleTriple :: (Ord a, Arbitrary a) => Gen (RN.Relation a, RN.Relation a, RN.Relation a)
 unionCompatibleTriple =
     arbitrary >>= \s -> let g = relationWithSig s in liftM3 (,,) g g g
+
+unionCompatibleFour :: (Ord a, Arbitrary a) => Gen (RN.Relation a, RN.Relation a, RN.Relation a, RN.Relation a)
+unionCompatibleFour =
+    arbitrary >>= \s -> let g = relationWithSig s in liftM4 (,,,) g g g g
 
 relationWithSig :: (Ord a, Arbitrary a) => Sig.Signature -> Gen (RN.Relation a)
 relationWithSig s =
