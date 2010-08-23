@@ -18,27 +18,27 @@ run = do quickCheck $ forAll (inputs 5) (prop_makeSigAndTuples makeIntRelation :
          quickCheck (prop_canRemoveIntermediateRenames :: (RInt, AttrName, AttrName) -> Bool)
          quickCheck (prop_unionWithSelfIsSelf :: RInt -> Bool)
          quickCheck (prop_unionWithEmptyIsSelf :: RInt -> Bool)
-         quickCheck $ forAll unionCompatiblePair (prop_unionIsCommutative :: RInt2 -> Bool)
-         quickCheck $ forAll unionCompatibleTriple (prop_unionIsAssociative :: RInt3 -> Bool)
-         quickCheck $ forAll unionCompatiblePair (prop_unionLikeSetUnion :: RInt2 -> Bool)
+         quickCheck $ forAllUC2 (prop_unionIsCommutative :: RInt2 -> Bool)
+         quickCheck $ forAllUC3 (prop_unionIsAssociative :: RInt3 -> Bool)
+         quickCheck $ forAllUC2 (prop_unionLikeSetUnion :: RInt2 -> Bool)
          quickCheck (prop_differenceWithSelfIsEmpty :: RInt -> Bool)
          quickCheck (prop_differenceWithEmptyIsSelf :: RInt -> Bool)
          quickCheck (prop_differenceEmptyDiffAnyIsEmpty :: RInt -> Bool)
-         quickCheck $ forAll unionCompatibleTriple (prop_differenceDeMorgan1 :: RInt3 -> Bool)
-         quickCheck $ forAll unionCompatibleTriple (prop_differenceDeMorgan2 :: RInt3 -> Bool)
-         quickCheck $ forAll unionCompatiblePair (prop_differencePM7a :: RInt2 -> Bool)
-         quickCheck $ forAll unionCompatiblePair (prop_differencePM7b :: RInt2 -> Bool)
-         quickCheck $ forAll unionCompatibleTriple (prop_differencePM8 :: RInt3 -> Bool)
-         quickCheck $ forAll unionCompatibleTriple (prop_differencePM9 :: RInt3 -> Bool)
+         quickCheck $ forAllUC3 (prop_differenceDeMorgan1 :: RInt3 -> Bool)
+         quickCheck $ forAllUC3 (prop_differenceDeMorgan2 :: RInt3 -> Bool)
+         quickCheck $ forAllUC2 (prop_differencePM7a :: RInt2 -> Bool)
+         quickCheck $ forAllUC2 (prop_differencePM7b :: RInt2 -> Bool)
+         quickCheck $ forAllUC3 (prop_differencePM8 :: RInt3 -> Bool)
+         quickCheck $ forAllUC3 (prop_differencePM9 :: RInt3 -> Bool)
          quickCheck $ forAllUC4 (prop_differencePM10 :: RInt4 -> Bool)
          quickCheck $ forAllUC4 (prop_differencePM11 :: RInt4 -> Bool)
-         quickCheck $ forAll unionCompatiblePair (prop_differenceLikeSetDifference :: RInt2 -> Bool)
+         quickCheck $ forAllUC2 (prop_differenceLikeSetDifference :: RInt2 -> Bool)
          quickCheck (prop_intersectionWithSelfIsSelf :: RInt -> Bool)
          quickCheck (prop_intersectionWithEmptyIsEmpty :: RInt -> Bool)
-         quickCheck $ forAll unionCompatiblePair (prop_intersectionIsCommutative :: RInt2 -> Bool)
-         quickCheck $ forAll unionCompatibleTriple (prop_intersectionIsAssociative :: RInt3 -> Bool)
-         quickCheck $ forAll unionCompatibleTriple (prop_intersectionDistributesOverUnion :: RInt3 -> Bool)
-         quickCheck $ forAll unionCompatiblePair (prop_intersectionLikeSetIntersection :: RInt2 -> Bool)
+         quickCheck $ forAllUC2 (prop_intersectionIsCommutative :: RInt2 -> Bool)
+         quickCheck $ forAllUC3 (prop_intersectionIsAssociative :: RInt3 -> Bool)
+         quickCheck $ forAllUC3 (prop_intersectionDistributesOverUnion :: RInt3 -> Bool)
+         quickCheck $ forAllUC2 (prop_intersectionLikeSetIntersection :: RInt2 -> Bool)
 
 type RInt = Relation Int
 type RInt2 = (RInt, RInt)
@@ -52,4 +52,6 @@ makeRelation :: (Ord a) => [AttrName] -> [[a]] -> Either String (Relation a)
 makeRelation = R.make
 
 
+forAllUC2 = forAll unionCompatiblePair
+forAllUC3 = forAll unionCompatibleTriple
 forAllUC4 = forAll unionCompatibleFour
