@@ -20,6 +20,10 @@ signatures :: Int -> Gen Sig.Signature
 signatures maxSize =
     Sig.fromList `liftM` (resize maxSize arbitrary :: Gen [AttrName])
 
+signaturesOfSize :: Int -> Gen Sig.Signature
+signaturesOfSize size =
+    untilM ((size ==) . Sig.size) (Sig.fromList `liftM` (vectorOf size arbitrary :: Gen [AttrName]))
+
 disjointSignatures :: Gen Sig.Signature -> Gen (Sig.Signature, Sig.Signature)
 disjointSignatures g =
     do s1 <- g

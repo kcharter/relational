@@ -9,6 +9,7 @@ import qualified Relational.Class as C
 import qualified Relational.Naive as RN
 
 import SignatureGen
+import SubList (subList)
 
 instance (Ord a, Arbitrary a) => Arbitrary (RN.Relation a) where
     arbitrary = join (relationOfSize arbitrary `liftM` choose (0,6))
@@ -60,3 +61,19 @@ makeOrDie sig = either failure id . C.make names
                                show sig ++ ": " ++
                                msg)
           names = Sig.toList sig :: [AttrName]
+
+relationAndTwoAttrs :: (Ord a, Arbitrary a) => Gen (RN.Relation a, AttrName, AttrName)
+relationAndTwoAttrs =
+    (\(r, a1:a2:_) -> (r,a1,a2)) `liftM` relationAndAttrs 4 2
+
+-- | The generator @relationAndAttrs sigN n@ generates pairs
+-- containing a relation of @sigN@ attributes, and a list of @n@
+-- attribute names drawn from the signature. This is meant for tests
+-- that exercise projection.
+relationAndAttrs :: (Ord a, Arbitrary a) => Int -> Int -> Gen (RN.Relation a, [AttrName])
+relationAndAttrs sigN n =
+    do sig <- signaturesOfSize sigN
+       tuples <- tuples sigN
+       subSig <- subList (Sig.toList sig) n
+       return (makeOrDie sig tuples, subSig)
+

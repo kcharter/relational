@@ -2,6 +2,7 @@ module RelationalProps where
 
 import Control.Monad (liftM, liftM2, join)
 import Control.Monad.Error (Error, MonadError)
+import Data.List (delete)
 import qualified Data.Map as DM
 import qualified Data.Set as DS
 
@@ -234,6 +235,16 @@ prop_intersectionLikeSetIntersection = noErr . propM_intersectionLikeSetIntersec
 
 propM_intersectionLikeSetIntersection :: (R.Relational n d r, Error e, MonadError e m) => (r, r) -> m Bool
 propM_intersectionLikeSetIntersection = propM_likeSetOp R.intersection DS.intersection
+
+prop_exclusionsCommute :: (R.Relational n d r, Eq r) => (r, n, n) -> Bool
+prop_exclusionsCommute = noErr . propM_exclusionsCommute
+
+propM_exclusionsCommute :: (R.Relational n d r, Eq r, Error e, MonadError e m) => (r, n, n) -> m Bool
+propM_exclusionsCommute (r, n1, n2) =
+    eqM (exclude n2 =<< exclude n1 r) (exclude n1 =<< exclude n2 r)
+    where exclude n r =
+              do s <- R.signature r
+                 R.project (delete n s) r
 
 emptyLike :: (R.Relational n d r, Error e, MonadError e m) => r -> m r
 emptyLike r = R.signature r >>= flip R.make []
