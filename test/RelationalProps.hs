@@ -246,6 +246,32 @@ propM_exclusionsCommute (r, n1, n2) =
               do s <- R.signature r
                  R.project (delete n s) r
 
+prop_projectionCommutesWithUnion :: (R.Relational n d r, Eq r) => ((r, r), [n]) -> Bool
+prop_projectionCommutesWithUnion = noErr. propM_projectionCommutesWithUnion
+
+propM_projectionCommutesWithUnion :: (R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                                     ((r, r), [n]) -> m Bool
+propM_projectionCommutesWithUnion = propM_projectionCommutesWith R.union
+
+prop_projectionCommutesWithDifference :: (R.Relational n d r, Eq r) => ((r, r), [n]) -> Bool
+prop_projectionCommutesWithDifference = noErr. propM_projectionCommutesWithDifference
+
+propM_projectionCommutesWithDifference :: (R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                                          ((r, r), [n]) -> m Bool
+propM_projectionCommutesWithDifference = propM_projectionCommutesWith R.difference
+
+prop_projectionCommutesWithIntersection :: (R.Relational n d r, Eq r) => ((r, r), [n]) -> Bool
+prop_projectionCommutesWithIntersection = noErr. propM_projectionCommutesWithIntersection
+
+propM_projectionCommutesWithIntersection :: (R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                                            ((r, r), [n]) -> m Bool
+propM_projectionCommutesWithIntersection = propM_projectionCommutesWith R.intersection
+
+propM_projectionCommutesWith :: (R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                                (r -> r -> m r) -> ((r, r), [n]) -> m Bool
+propM_projectionCommutesWith f (pair, names) =
+    propM_commutesWith (R.project names) f pair
+
 emptyLike :: (R.Relational n d r, Error e, MonadError e m) => r -> m r
 emptyLike r = R.signature r >>= flip R.make []
 
@@ -265,6 +291,10 @@ propM_commutative f (x,y) = eqM (f x y) (f y x)
 propM_associative :: (Monad m, Eq a) => (a -> a -> m a) -> (a, a, a) -> m Bool
 propM_associative f (x,y,z) =
     eqM (f x y >>= flip f z) (f x =<< f y z)
+
+propM_commutesWith :: (Monad m, Eq a) => (a -> m a) -> (a -> a -> m a) -> (a, a) -> m Bool
+propM_commutesWith f g (x,y) =
+    eqM (f =<< g x y) (join (liftM2 g (f x) (f y)))
 
 noErr :: Either String b -> Bool
 noErr = either (const False) (const True)

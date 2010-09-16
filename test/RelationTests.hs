@@ -40,6 +40,9 @@ run = do quickCheck $ forAll (inputs 5) (prop_makeSigAndTuples makeIntRelation :
          quickCheck $ forAllUC3 (prop_intersectionDistributesOverUnion :: RInt3 -> Bool)
          quickCheck $ forAllUC2 (prop_intersectionLikeSetIntersection :: RInt2 -> Bool)
          quickCheck $ forAllRIntAndTwoAttrs (prop_exclusionsCommute :: (RInt, AttrName, AttrName) -> Bool)
+         quickCheck $ forAllUC2AndAttrs (prop_projectionCommutesWithUnion :: (RInt2, [AttrName]) -> Bool)
+         quickCheck $ forAllUC2AndAttrs (prop_projectionCommutesWithDifference :: (RInt2, [AttrName]) -> Bool)
+         quickCheck $ forAllUC2AndAttrs (prop_projectionCommutesWithIntersection :: (RInt2, [AttrName]) -> Bool)
 
 type RInt = Relation Int
 type RInt2 = (RInt, RInt)
@@ -58,3 +61,5 @@ forAllUC3 = forAll unionCompatibleTriple
 forAllUC4 = forAll unionCompatibleFour
 
 forAllRIntAndTwoAttrs = forAll (relationAndTwoAttrs :: Gen (RInt, AttrName, AttrName))
+
+forAllUC2AndAttrs = forAll unionCompatiblePairAndAttrs

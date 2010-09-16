@@ -77,3 +77,10 @@ relationAndAttrs sigN n =
        subSig <- subList (Sig.toList sig) n
        return (makeOrDie sig tuples, subSig)
 
+unionCompatiblePairAndAttrs :: (Ord a, Arbitrary a) => Gen ((RN.Relation a, RN.Relation a), [AttrName])
+unionCompatiblePairAndAttrs =
+    do (x,y) <- unionCompatiblePair
+       allNames <- C.signature x
+       n <- choose (0, length allNames)
+       names <- subList allNames n
+       return ((x,y), names)
