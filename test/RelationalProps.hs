@@ -272,6 +272,19 @@ propM_projectionCommutesWith :: (R.Relational n d r, Eq r, Error e, MonadError e
 propM_projectionCommutesWith f (pair, names) =
     propM_commutesWith (R.project names) f pair
 
+prop_projectionLikeMapProjection :: (R.Relational n d r, Eq r) => (r, [n]) -> Bool
+prop_projectionLikeMapProjection = noErr . propM_projectionLikeMapProjection
+
+propM_projectionLikeMapProjection :: (R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                                     (r, [n]) -> m Bool
+propM_projectionLikeMapProjection (r, names) =
+    do allNames <- R.signature r
+       tuples <- R.tuples r
+       eqM (R.make names (subTuples allNames tuples)) (R.project names r)
+    where subTuples allNames = map (subTuple names)
+              where subTuple names t = project names (DM.fromList (zip allNames t))
+                    project names m = map (m DM.!) names
+
 emptyLike :: (R.Relational n d r, Error e, MonadError e m) => r -> m r
 emptyLike r = R.signature r >>= flip R.make []
 
