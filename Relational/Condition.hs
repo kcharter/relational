@@ -6,6 +6,7 @@ module Relational.Condition (Condition(..),
                              evalCondition) where
 
 import Control.Monad (liftM, liftM2)
+import Data.List (intercalate)
 
 -- | Selection conditions, used in selections and joins.
 -- This is an abstract syntax for a simple language of boolean
@@ -28,6 +29,14 @@ data Condition n d m =
     -- ^ The result of calling a test function on a list of
     -- argument values.
 
+instance (Show n, Show d) => Show (Condition n d m) where
+    show CondTrue = "true"
+    show CondFalse = "false"
+    show (CondNot c) = "not (" ++ show c ++ ")"
+    show (CondAnd c c') = "(" ++ show c ++ " and " ++ show c' ++ ")"
+    show (CondOr c c') = "(" ++ show c ++ " or " ++ show c' ++ ")"
+    show (CondRel op e e') = "(" ++ show e ++ " " ++ show op ++ " " ++ show e' ++ ")"
+    show (CondCall _ exps) = "<func>(" ++ intercalate "," (map show exps) ++ ")" 
 
 -- | The fundamental relational operators on attribute values.
 data RelOp = RelLT |
@@ -36,7 +45,12 @@ data RelOp = RelLT |
              -- ^ Equals.
              RelGT
              -- ^ Greater than.
-             deriving (Eq, Ord, Show)
+             deriving (Eq, Ord)
+
+instance Show RelOp where
+    show RelLT = "<"
+    show RelEq = "="
+    show RelGT = ">"
 
 -- | An expression that produces a data value from an implicit tuple.
 data Expression n d m =
@@ -47,6 +61,11 @@ data Expression n d m =
     ExpCall ([d] -> m d) [Expression n d m]
     -- ^ The result of calling a function on a list of argument
     -- expressions.
+
+instance (Show n, Show d) => Show (Expression n d m) where
+    show (ExpConst x) = show x
+    show (ExpValueOf n) = show n
+    show (ExpCall _ exps) = "<func>(" ++ intercalate "," (map show exps) ++ ")"
 
 -- | Evaluates a condition in an arbitrary monad, given a lookup function.
 -- The lookup function retrieves attribute values from a tuple.
