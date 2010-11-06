@@ -20,4 +20,5 @@ library
   ghc-options:     -fwarn-incomplete-patterns
                    -fwarn-unused-imports
                    -- -prof -auto-all -caf-all
+                   -funbox-strict-fields
                    -O2

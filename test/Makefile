@@ -1,6 +1,6 @@
 .PHONY: clean runtests
 
-GHC_OPTS=-O2 -funbox-strict-fields -i.. -hide-package monads-fd -outputdir build -fwarn-unused-imports
+GHC_OPTS=-O2 -funbox-strict-fields -i.. -outputdir build -fwarn-unused-imports
 PROGS=runtests
 
 all: $(PROGS)
