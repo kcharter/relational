@@ -1,12 +1,12 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, TupleSections #-}
 
 module ConditionGen where
 
-import Control.Monad (liftM, liftM2, liftM3, foldM, join)
-import Control.Monad.Error (throwError)
+import Control.Monad (liftM, liftM2, liftM3, filterM)
+import Control.Monad.Error (Error, MonadError, throwError, strMsg)
 import Data.List (nub, sort, foldl')
 import qualified Data.Map as DM
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (catMaybes)
 import Test.QuickCheck
 
 import Relational.Condition
@@ -39,15 +39,26 @@ condition name size =
     where subCondition = condition name (size `div` 2)
           subExpression = expression name (size `div`2)
 
+-- | Builds a generator for satisfiable conditions paried with their satisfying tuples.
 satisfiableCondition :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d) =>
-                        [n] -> Int -> Gen (Condition n d (Either String))
+                        [n] -> Int -> Gen (Condition n d (Either String), [[d]])
 satisfiableCondition names size =
-    untilM isSatisfiable (condition (elements names) size)
+  untilM (not . null . snd) (conditionAndSatisfyingTuples names size)
 
-isSatisfiable :: (Ord n, Ord d, Bounded d, Enum d) => Condition n d (Either String) -> Bool
-isSatisfiable c = maybe False (const True) (thatSatisfy names c)
-    where names = attrNamesIn c
-
+-- | Builds a generator for conditions that are unsatisfiable.
+unsatisfiableCondition :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d) =>
+                          [n] -> Int -> Gen (Condition n d (Either String))
+unsatisfiableCondition names size =
+  fst `liftM` untilM (null . snd) (conditionAndSatisfyingTuples names size)
+  
+-- | Builds a generator for conditions paired with the tuples that
+-- satisfy them. A satisfiable condition will have a non-empty list of
+-- satisfying tuples.
+conditionAndSatisfyingTuples :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d) =>
+                                [n] -> Int -> Gen (Condition n d (Either String), [[d]])
+conditionAndSatisfyingTuples names size =
+  condition (elements names) size >>= \c -> (c,) `liftM` either (const (return [])) return (allSatisfying names c)
+                                                                 
 attrNamesIn c =
     case c of CondNot c' -> attrNamesIn c'
               CondAnd c' c'' -> attrNamesIn c' ++ attrNamesIn c''
@@ -60,17 +71,19 @@ attrNamesIn c =
                         ExpCall _ exps -> concatMap attrNamesInExp exps
                         _ -> []
 
-thatSatisfy :: (Ord n, Ord d, Bounded d, Enum d) =>
-               [n] -> Condition n d (Either String) -> Maybe (Gen [(n,d)])
-thatSatisfy names c = if null satisfying' then Nothing else Just (elements satisfying')
-    where satisfying' = map DM.toList $ satisfying c $ allTuples names
+allSatisfying :: (Show n, Ord n, Ord d, Bounded d, Enum d, Error e, MonadError e m) =>
+                 [n] -> Condition n d m -> m [[d]]
+allSatisfying names c = map projectNames `liftM` satisfying c (allTuples names)
+  where projectNames m = catMaybes $ map (flip DM.lookup m) names
 
-satisfying :: (Ord n, Ord d) =>
-              Condition n d (Either String) -> [DM.Map n d] -> [DM.Map n d]
-satisfying c = filter (\m -> evalOn m)
-    where evalOn m = either (const False) id (evalCondition (lookup m) c)
-          lookup m n = maybe (noSuchName n) return (DM.lookup n m)
-          noSuchName n = throwError "Bad name (ignored)"
+satisfying :: (Show n, Ord n, Ord d, Error e, MonadError e m) =>
+              Condition n d m -> [DM.Map n d] -> m [DM.Map n d]
+satisfying c = filterM (evalOn c)
+
+evalOn :: (Show n, Ord n, Ord d, Error e, MonadError e m) => Condition n d m -> DM.Map n d -> m Bool
+evalOn c m = evalCondition (lookup m) c
+  where lookup m n = maybe (noSuchName n) return (DM.lookup n m)
+        noSuchName n = throwError $ strMsg $ "Bad name " ++ show n
 
 allTuples :: (Bounded d, Enum d, Ord n) => [n] -> [DM.Map n d]
 allTuples [] = [DM.empty]
