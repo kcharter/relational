@@ -3,10 +3,13 @@ module RelationalProps where
 import Control.Monad (liftM, liftM2, join)
 import Control.Monad.Error (Error, MonadError)
 import Data.List (delete)
+import Data.Maybe (catMaybes)
 import qualified Data.Map as DM
 import qualified Data.Set as DS
 
 import qualified Relational.Class as R
+import Relational.Condition
+import ConditionGen (satisfying)
 
 prop_makeSigAndTuples :: (R.Relational n d r) => ([n] -> [[d]] -> Either String r) -> ([n], [[d]]) -> Bool
 prop_makeSigAndTuples mk = noErr . propM_makeSigAndTuples mk
@@ -284,6 +287,31 @@ propM_projectionLikeMapProjection (r, names) =
     where subTuples allNames = map (subTuple names)
               where subTuple names t = project names (DM.fromList (zip allNames t))
                     project names m = map (m DM.!) names
+
+prop_selectTrueIsIdentity :: (R.Relational n d r, Eq r) => r -> Bool
+prop_selectTrueIsIdentity = noErr . propM_selectTrueIsIdentity
+
+propM_selectTrueIsIdentity :: (R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                              r -> m Bool
+propM_selectTrueIsIdentity r = (r ==) `liftM` R.select CondTrue r
+
+prop_selectFalseIsEmpty :: (R.Relational n d r, Eq r) => r -> Bool
+prop_selectFalseIsEmpty = noErr . propM_selectFalseIsEmpty
+
+propM_selectFalseIsEmpty :: (R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                            r -> m Bool
+propM_selectFalseIsEmpty r = (null . R.tuples) `liftM` R.select CondFalse r
+
+prop_selectLikeFilter :: (Show n, R.Relational n d r, Eq r) => (r, Condition n d (Either String)) -> Bool
+prop_selectLikeFilter = noErr . propM_selectLikeFilter
+
+propM_selectLikeFilter :: (Show n, R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                          (r, Condition n d m) -> m Bool
+propM_selectLikeFilter (r, c) =
+  do names <- R.signature r
+     eqM (R.select c r) (fromMapList names =<< satisfying c =<< (toMapList names `liftM` R.tuples r))
+  where toMapList names = map (DM.fromList . zip names)
+        fromMapList names = R.make names . map (\m -> catMaybes $ map (flip DM.lookup m) names)
 
 emptyLike :: (R.Relational n d r, Error e, MonadError e m) => r -> m r
 emptyLike r = R.signature r >>= flip R.make []

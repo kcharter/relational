@@ -3,13 +3,17 @@ module RelationTests (run) where
 import Test.QuickCheck
 
 import qualified Relational.Class as R
+import Relational.Condition
 import Relational.Naive.AttrName
 import Relational.Naive (Relation)
+import qualified Relational.Naive.Signature as Sig
 
 import AttrNameGen()
-import SignatureGen()
+import ConditionGen
 import RelationGen
 import RelationalProps
+import SignatureGen (signatures)
+import SubList
 
 run :: IO ()
 run = do quickCheck $ forAll (inputs 5) (prop_makeSigAndTuples makeIntRelation :: ([AttrName], [[Int]]) -> Bool)
@@ -44,6 +48,9 @@ run = do quickCheck $ forAll (inputs 5) (prop_makeSigAndTuples makeIntRelation :
          quickCheck $ forAllUC2AndAttrs (prop_projectionCommutesWithDifference :: (RInt2, [AttrName]) -> Bool)
          quickCheck $ forAllUC2AndAttrs (prop_projectionCommutesWithIntersection :: (RInt2, [AttrName]) -> Bool)
          quickCheck $ forAllRIntAndAttrs (prop_projectionLikeMapProjection :: (RInt, [AttrName]) -> Bool)
+         quickCheck (prop_selectTrueIsIdentity :: RInt -> Bool)
+         quickCheck (prop_selectFalseIsEmpty :: RInt -> Bool)
+         quickCheck $ forAllRSmallAndSatCond (prop_selectLikeFilter :: (RSmall, CondSmall) -> Bool)
 
 type RInt = Relation Int
 type RInt2 = (RInt, RInt)
@@ -66,3 +73,16 @@ forAllRIntAndTwoAttrs = forAll (relationAndTwoAttrs :: Gen (RInt, AttrName, Attr
 forAllRIntAndAttrs = forAll (do n <- choose (0,6); m <- choose (0,n); relationAndAttrs n m)
 
 forAllUC2AndAttrs = forAll unionCompatiblePairAndAttrs
+
+type RSmall = Relation Small
+type CondSmall = Condition AttrName Small (Either String)
+
+forAllRSmallAndSatCond = forAll rSmallAndSatCond
+
+rSmallAndSatCond :: Gen (RSmall, CondSmall) 
+rSmallAndSatCond =
+  sized $ \n -> do sig <- signatures 3
+                   (c, allSat) <- satisfiableCondition (Sig.toList sig) n
+                   someSat <- subList allSat =<< choose (0,length allSat)
+                   maybeSat <- listOf $ vectorOf (Sig.size sig) arbitrary
+                   return (makeOrDie sig (someSat ++ maybeSat), c)
