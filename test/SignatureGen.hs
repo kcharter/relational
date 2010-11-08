@@ -20,6 +20,9 @@ signatures :: Int -> Gen Sig.Signature
 signatures maxSize =
     Sig.fromList `liftM` (resize maxSize arbitrary :: Gen [AttrName])
 
+nonEmptySignatures :: Int -> Gen Sig.Signature
+nonEmptySignatures maxSize = untilM ((0<) . Sig.size) (signatures maxSize)
+  
 signaturesOfSize :: Int -> Gen Sig.Signature
 signaturesOfSize size =
     untilM ((size ==) . Sig.size) (Sig.fromList `liftM` (vectorOf size arbitrary :: Gen [AttrName]))

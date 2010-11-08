@@ -12,20 +12,21 @@ import Test.QuickCheck
 import Relational.Condition
 import MonadUtil (untilM)
 
-expression :: (Arbitrary d, CoArbitrary [d], Arbitrary (m d)) => Gen n -> Int -> Gen (Expression n d m)
+expression :: (Arbitrary d, CoArbitrary [d], Monad m) => Gen n -> Int -> Gen (Expression n d m)
 expression name size =
     if size <= 1
     then oneof [ const, ref ]
     else oneof [ const, ref, call ]
     where const = ExpConst `liftM` arbitrary
           ref = ExpValueOf `liftM` name
-          call = liftM2 ExpCall arbitrary (listOf subExpression)
+          call = liftM2 ExpCall noFailFunction args
+          args = resize 4 (listOf subExpression)
           subExpression = expression name (size `div` 2)
 
 instance Arbitrary RelOp where
     arbitrary = elements [RelLT, RelEq, RelGT]
 
-condition :: (Arbitrary d, CoArbitrary [d], Arbitrary (m d), Arbitrary (m Bool)) => Gen n -> Int -> Gen (Condition n d m)
+condition :: (Arbitrary d, CoArbitrary [d], Monad m) => Gen n -> Int -> Gen (Condition n d m)
 condition name size =
     if size <= 1
     then elements [ CondTrue, CondFalse ]
@@ -35,18 +36,31 @@ condition name size =
                  liftM2 CondAnd subCondition subCondition,
                  liftM2 CondOr subCondition subCondition,
                  liftM3 CondRel arbitrary subExpression subExpression,
-                 liftM2 CondCall arbitrary (listOf subExpression)]
+                 liftM2 CondCall noFailFunction args ]
     where subCondition = condition name (size `div` 2)
           subExpression = expression name (size `div`2)
+          args = resize 4 (listOf subExpression)
+
+-- | Builds an arbitrary function that returns its result in a monad.
+--
+-- This addresses a subtle error that I encountered when generating
+-- functions in expressions and conditions. There, in practice the
+-- monad is @(Either String)@, and you can use @arbitary@ directly if
+-- @r@ is 'Arbitary' in @(Either String r)@. However, this means that
+-- the generated function may generate errors! I found this out the
+-- hard way when I discovered that 'unsatisfiableCondition' would
+-- usually pick conditions with functions that threw errors!
+noFailFunction :: (CoArbitrary [d], Arbitrary r, Monad m) => Gen ([d] -> m r)
+noFailFunction = arbitrary >>= \f -> return (return . f)
 
 -- | Builds a generator for satisfiable conditions paried with their satisfying tuples.
-satisfiableCondition :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d) =>
+satisfiableCondition :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
                         [n] -> Int -> Gen (Condition n d (Either String), [[d]])
 satisfiableCondition names size =
   untilM (not . null . snd) (conditionAndSatisfyingTuples names size)
 
 -- | Builds a generator for conditions that are unsatisfiable.
-unsatisfiableCondition :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d) =>
+unsatisfiableCondition :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
                           [n] -> Int -> Gen (Condition n d (Either String))
 unsatisfiableCondition names size =
   fst `liftM` untilM (null . snd) (conditionAndSatisfyingTuples names size)
@@ -54,10 +68,11 @@ unsatisfiableCondition names size =
 -- | Builds a generator for conditions paired with the tuples that
 -- satisfy them. A satisfiable condition will have a non-empty list of
 -- satisfying tuples.
-conditionAndSatisfyingTuples :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d) =>
+conditionAndSatisfyingTuples :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
                                 [n] -> Int -> Gen (Condition n d (Either String), [[d]])
 conditionAndSatisfyingTuples names size =
-  condition (elements names) size >>= \c -> (c,) `liftM` either (const (return [])) return (allSatisfying names c)
+  condition (elements names) size >>= \c -> (c,) `liftM` either (abort c) return (allSatisfying names c)
+    where abort c = error . (("error determining all satisfying tuples for " ++ show c ++ ": ") ++) . show
                                                                  
 attrNamesIn c =
     case c of CondNot c' -> attrNamesIn c'

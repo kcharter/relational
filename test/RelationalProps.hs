@@ -302,6 +302,15 @@ propM_selectFalseIsEmpty :: (R.Relational n d r, Eq r, Error e, MonadError e m) 
                             r -> m Bool
 propM_selectFalseIsEmpty r = (null . R.tuples) `liftM` R.select CondFalse r
 
+prop_selectUnsatisfiableIsEmpty :: (R.Relational n d r) =>
+                                   (r, Condition n d (Either String)) -> Bool
+prop_selectUnsatisfiableIsEmpty = noErr . propM_selectUnsatisfiableIsEmpty
+
+propM_selectUnsatisfiableIsEmpty :: (R.Relational n d r, Error e, MonadError e m) =>
+                                    (r, Condition n d m) -> m Bool
+propM_selectUnsatisfiableIsEmpty (r, c) =
+  (null . R.tuples) `liftM` R.select c r
+  
 prop_selectLikeFilter :: (Show n, R.Relational n d r, Eq r) => (r, Condition n d (Either String)) -> Bool
 prop_selectLikeFilter = noErr . propM_selectLikeFilter
 

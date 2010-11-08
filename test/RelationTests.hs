@@ -12,7 +12,7 @@ import AttrNameGen()
 import ConditionGen
 import RelationGen
 import RelationalProps
-import SignatureGen (signatures)
+import SignatureGen (nonEmptySignatures)
 import SubList
 
 run :: IO ()
@@ -50,6 +50,7 @@ run = do quickCheck $ forAll (inputs 5) (prop_makeSigAndTuples makeIntRelation :
          quickCheck $ forAllRIntAndAttrs (prop_projectionLikeMapProjection :: (RInt, [AttrName]) -> Bool)
          quickCheck (prop_selectTrueIsIdentity :: RInt -> Bool)
          quickCheck (prop_selectFalseIsEmpty :: RInt -> Bool)
+         quickCheck $ forAllRSmallAndUnsatCond (prop_selectUnsatisfiableIsEmpty :: (RSmall, CondSmall) -> Bool)
          quickCheck $ forAllRSmallAndSatCond (prop_selectLikeFilter :: (RSmall, CondSmall) -> Bool)
 
 type RInt = Relation Int
@@ -81,8 +82,17 @@ forAllRSmallAndSatCond = forAll rSmallAndSatCond
 
 rSmallAndSatCond :: Gen (RSmall, CondSmall) 
 rSmallAndSatCond =
-  sized $ \n -> do sig <- signatures 3
+  sized $ \n -> do sig <- nonEmptySignatures 3
                    (c, allSat) <- satisfiableCondition (Sig.toList sig) n
                    someSat <- subList allSat =<< choose (0,length allSat)
                    maybeSat <- listOf $ vectorOf (Sig.size sig) arbitrary
                    return (makeOrDie sig (someSat ++ maybeSat), c)
+                   
+forAllRSmallAndUnsatCond = forAll rSmallAndUnsatCond
+
+rSmallAndUnsatCond :: Gen (RSmall, CondSmall)
+rSmallAndUnsatCond =
+  sized $ \n -> do sig <- nonEmptySignatures 3
+                   c <- unsatisfiableCondition (Sig.toList sig) n
+                   r <- relationWithSig sig
+                   return (r, c)
