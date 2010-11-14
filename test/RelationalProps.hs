@@ -355,7 +355,18 @@ propM_prodLikeConcat (r, s) =
              tr <- R.tuples r
              ts <- R.tuples s
              R.make (sigr ++ sigs) [x ++ y | x <- tr, y <- ts]
-  
+
+prop_joinLikeSelectOnProd :: (Show n, R.Relational n d r, Eq r) =>
+                             (r, r, Condition n d (Either String)) -> Bool
+prop_joinLikeSelectOnProd = noErr . propM_joinLikeSelectOnProd
+
+-- | Joining two product-compatible relations is the same as
+-- performing a select on their Cartesian product.
+propM_joinLikeSelectOnProd :: (Show n, R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                              (r, r, Condition n d m) -> m Bool
+propM_joinLikeSelectOnProd (r, s, c) =
+  eqM (R.select c =<< R.cartesianProduct r s) (R.join c r s)
+
 emptyLike :: (R.Relational n d r, Error e, MonadError e m) => r -> m r
 emptyLike r = R.signature r >>= flip R.make []
 

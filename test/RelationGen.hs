@@ -4,11 +4,13 @@ import Control.Monad (liftM, liftM2, liftM3, liftM4, join)
 import Test.QuickCheck
 
 import Relational.Naive.AttrName
+import Relational.Condition (Condition)
 import qualified Relational.Naive.Signature as Sig
 import qualified Relational.Class as C
 import qualified Relational.Naive as RN
 
 import SignatureGen
+import ConditionGen
 import SubList (subList)
 
 instance (Ord a, Arbitrary a) => Arbitrary (RN.Relation a) where
@@ -90,4 +92,22 @@ unionCompatiblePairAndAttrs =
 productCompatiblePair :: (Ord a, Arbitrary a) => Gen (RN.Relation a, RN.Relation a)
 productCompatiblePair =
   do (s1,s2) <- disjointSignatures (signatures 4)
-     liftM2 (,) (relationWithSig s1) (relationWithSig s2) 
+     liftM2 (,) (relationWithSig s1) (relationWithSig s2)
+
+-- | Generates pairs of product-compatible relations and a satisfiable
+-- condition on the union of their signatures. Typically, the
+-- Cartesian product of the relations will contain some random number
+-- of the tuples that satisfy the condition.
+productCompatiblePairAndSatisfiableCondition :: (Bounded a, Enum a, Ord a, Show a, Arbitrary a, CoArbitrary a) =>
+                                                Gen (RN.Relation a, RN.Relation a,
+                                                     Condition AttrName a (Either String))
+productCompatiblePairAndSatisfiableCondition =
+  do (s1,s2) <- disjointSignatures (signatures 3)
+     (c,ts)  <- satisfiableCondition (Sig.toList s1 ++ Sig.toList s2) =<< choose (1,8)
+     n <- sized $ \n -> choose (1, min n (length ts))
+     pairs <- map (splitAt (Sig.size s1)) `liftM` subList ts n
+     r   <- mk s1 (map fst pairs)
+     s   <- mk s2 (map snd pairs)
+     return (r,s,c)
+  where mk sig common = (makeOrDie sig . (common++)) `liftM` tuples'
+          where tuples' = sized $ \n -> resize (min 0 (n - length common)) (tuples (Sig.size sig))

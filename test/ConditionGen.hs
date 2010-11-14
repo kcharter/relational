@@ -23,6 +23,16 @@ expression name size =
           args = resize 4 (listOf subExpression)
           subExpression = expression name (size `div` 2)
 
+constantExpression :: (Arbitrary d, CoArbitrary [d], Monad m) => Int -> Gen (Expression n d m)
+constantExpression size =
+    if size <= 1
+    then oneof [ const ]
+    else oneof [ const, call ]
+    where const = ExpConst `liftM` arbitrary
+          call = liftM2 ExpCall noFailFunction args
+          args = resize 4 (listOf subExpression)
+          subExpression = constantExpression (size `div` 2)
+
 instance Arbitrary RelOp where
     arbitrary = elements [RelLT, RelEq, RelGT]
 
@@ -41,6 +51,21 @@ condition name size =
           subExpression = expression name (size `div`2)
           args = resize 4 (listOf subExpression)
 
+constantCondition :: (Arbitrary d, CoArbitrary [d], Monad m) => Int -> Gen (Condition n d m)
+constantCondition size =
+    if size <= 1
+    then elements [ CondTrue, CondFalse ]
+    else oneof [ return CondTrue,
+                 return CondFalse,
+                 CondNot `liftM` subCondition,
+                 liftM2 CondAnd subCondition subCondition,
+                 liftM2 CondOr subCondition subCondition,
+                 liftM3 CondRel arbitrary subExpression subExpression,
+                 liftM2 CondCall noFailFunction args ]
+    where subCondition = constantCondition (size `div` 2)
+          subExpression = constantExpression (size `div`2)
+          args = resize 4 (listOf subExpression)
+  
 -- | Builds an arbitrary function that returns its result in a monad.
 --
 -- This addresses a subtle error that I encountered when generating
@@ -71,9 +96,13 @@ unsatisfiableCondition names size =
 conditionAndSatisfyingTuples :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
                                 [n] -> Int -> Gen (Condition n d (Either String), [[d]])
 conditionAndSatisfyingTuples names size =
-  condition (elements names) size >>= \c -> (c,) `liftM` either (abort c) return (allSatisfying names c)
+  condition' size >>= \c -> (c,) `liftM` either (abort c) return (allSatisfying names c)
     where abort c = error . (("error determining all satisfying tuples for " ++ show c ++ ": ") ++) . show
-                                                                 
+          condition' =
+            case names of
+              [] -> constantCondition
+              _ -> condition (elements names)
+              
 attrNamesIn c =
     case c of CondNot c' -> attrNamesIn c'
               CondAnd c' c'' -> attrNamesIn c' ++ attrNamesIn c''
