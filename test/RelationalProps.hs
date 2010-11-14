@@ -322,6 +322,25 @@ propM_selectLikeFilter (r, c) =
   where toMapList names = map (DM.fromList . zip names)
         fromMapList names = R.make names . map (\m -> catMaybes $ map (flip DM.lookup m) names)
 
+prop_prodWithNoAttrsIsId :: (Show n, R.Relational n d r, Eq r) => r -> Bool
+prop_prodWithNoAttrsIsId = noErr . propM_prodWithNoAttrsIsId
+
+propM_prodWithNoAttrsIsId :: (Show n, R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                             r -> m Bool
+propM_prodWithNoAttrsIsId r =
+  (r ==) `liftM` (R.cartesianProduct r =<< (R.make ([] :: [n]) ([[]] :: [[d]])))
+  
+prop_prodWithEmptyIsEmpty :: (Show n, R.Relational n d r) => (r, [n]) -> Bool
+prop_prodWithEmptyIsEmpty = noErr . propM_prodWithEmptyIsEmpty
+
+-- | Cartesian product with an empty relation with distinct attributes
+-- always produces the empty relation.
+propM_prodWithEmptyIsEmpty :: (Show n, R.Relational n d r, Error e, MonadError e m) =>
+                              (r, [n]) -> m Bool
+propM_prodWithEmptyIsEmpty (r, attrs) =
+  (null . R.tuples) `liftM` (R.cartesianProduct r =<< R.make attrs ([] :: [[d]]))
+  
+  
 emptyLike :: (R.Relational n d r, Error e, MonadError e m) => r -> m r
 emptyLike r = R.signature r >>= flip R.make []
 

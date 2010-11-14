@@ -1,5 +1,8 @@
+{-# LANGUAGE TupleSections #-}
+
 module RelationTests (run) where
 
+import Control.Monad (liftM2)
 import Test.QuickCheck
 
 import qualified Relational.Class as R
@@ -12,7 +15,7 @@ import AttrNameGen()
 import ConditionGen
 import RelationGen
 import RelationalProps
-import SignatureGen (nonEmptySignatures)
+import SignatureGen (nonEmptySignatures, disjointSignatures)
 import SubList
 
 run :: IO ()
@@ -52,6 +55,8 @@ run = do quickCheck $ forAll (inputs 5) (prop_makeSigAndTuples makeIntRelation :
          quickCheck (prop_selectFalseIsEmpty :: RInt -> Bool)
          quickCheck $ forAllRSmallAndUnsatCond (prop_selectUnsatisfiableIsEmpty :: (RSmall, CondSmall) -> Bool)
          quickCheck $ forAllRSmallAndSatCond (prop_selectLikeFilter :: (RSmall, CondSmall) -> Bool)
+         quickCheck (prop_prodWithNoAttrsIsId :: RSmall -> Bool)
+         quickCheck $ forAll rSmallAndDistinctAttrs (prop_prodWithEmptyIsEmpty :: (RSmall, [AttrName]) -> Bool)
 
 type RInt = Relation Int
 type RInt2 = (RInt, RInt)
@@ -96,3 +101,8 @@ rSmallAndUnsatCond =
                    c <- unsatisfiableCondition (Sig.toList sig) n
                    r <- relationWithSig sig
                    return (r, c)
+
+rSmallAndDistinctAttrs :: Gen (RSmall, [AttrName])
+rSmallAndDistinctAttrs =
+  disjointSignatures arbitrary >>= \(s1,s2) -> liftM2 (,) (relationWithSig s1) (return (Sig.toList s2))
+     
