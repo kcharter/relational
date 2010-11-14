@@ -84,3 +84,10 @@ unionCompatiblePairAndAttrs =
        n <- choose (0, length allNames)
        names <- subList allNames n
        return ((x,y), names)
+
+-- | A generator for pairs of relations with disjoint signatures, and
+-- hence suitable for Cartesian products and joins.
+productCompatiblePair :: (Ord a, Arbitrary a) => Gen (RN.Relation a, RN.Relation a)
+productCompatiblePair =
+  do (s1,s2) <- disjointSignatures (signatures 4)
+     liftM2 (,) (relationWithSig s1) (relationWithSig s2) 

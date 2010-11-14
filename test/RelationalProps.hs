@@ -339,7 +339,22 @@ propM_prodWithEmptyIsEmpty :: (Show n, R.Relational n d r, Error e, MonadError e
                               (r, [n]) -> m Bool
 propM_prodWithEmptyIsEmpty (r, attrs) =
   (null . R.tuples) `liftM` (R.cartesianProduct r =<< R.make attrs ([] :: [[d]]))
-  
+
+prop_prodLikeConcat :: (Show n, R.Relational n d r, Eq r) => (r, r) -> Bool
+prop_prodLikeConcat = noErr . propM_prodLikeConcat
+
+-- | Cartesian product is like taking all concatenations of tuple
+-- lists. Note that the input relations should be product-compatible.
+propM_prodLikeConcat :: (Show n, R.Relational n d r, Eq r, Error e, MonadError e m) =>
+                        (r, r) -> m Bool
+propM_prodLikeConcat (r, s) =
+  eqM (allListConcats r s) (R.cartesianProduct r s)
+  where allListConcats r s =
+          do sigr <- R.signature r
+             sigs <- R.signature s
+             tr <- R.tuples r
+             ts <- R.tuples s
+             R.make (sigr ++ sigs) [x ++ y | x <- tr, y <- ts]
   
 emptyLike :: (R.Relational n d r, Error e, MonadError e m) => r -> m r
 emptyLike r = R.signature r >>= flip R.make []

@@ -57,6 +57,8 @@ run = do quickCheck $ forAll (inputs 5) (prop_makeSigAndTuples makeIntRelation :
          quickCheck $ forAllRSmallAndSatCond (prop_selectLikeFilter :: (RSmall, CondSmall) -> Bool)
          quickCheck (prop_prodWithNoAttrsIsId :: RSmall -> Bool)
          quickCheck $ forAll rSmallAndDistinctAttrs (prop_prodWithEmptyIsEmpty :: (RSmall, [AttrName]) -> Bool)
+         quickCheck $ forAllPCPair (prop_prodLikeConcat :: (RSmall, RSmall) -> Bool)
+
 
 type RInt = Relation Int
 type RInt2 = (RInt, RInt)
@@ -106,3 +108,4 @@ rSmallAndDistinctAttrs :: Gen (RSmall, [AttrName])
 rSmallAndDistinctAttrs =
   disjointSignatures arbitrary >>= \(s1,s2) -> liftM2 (,) (relationWithSig s1) (return (Sig.toList s2))
      
+forAllPCPair = forAll productCompatiblePair
