@@ -12,32 +12,22 @@ import Test.QuickCheck
 import Relational.Condition
 import MonadUtil (untilM)
 
-expression :: (Arbitrary d, CoArbitrary [d], Monad m) => Gen n -> Int -> Gen (Expression n d m)
-expression name size =
+expression :: (Arbitrary d, CoArbitrary [d], Monad m) => Maybe (Gen n) -> Int -> Gen (Expression n d m)
+expression mName size =
     if size <= 1
-    then oneof [ const, ref ]
-    else oneof [ const, ref, call ]
-    where const = ExpConst `liftM` arbitrary
-          ref = ExpValueOf `liftM` name
+    then oneof $ maybeRef ++ [ const ]
+    else oneof $ maybeRef ++ [ const, call ]
+    where maybeRef = maybe [] ((:[]) . liftM ExpValueOf) mName
+          const = ExpConst `liftM` arbitrary
           call = liftM2 ExpCall noFailFunction args
           args = resize 4 (listOf subExpression)
-          subExpression = expression name (size `div` 2)
-
-constantExpression :: (Arbitrary d, CoArbitrary [d], Monad m) => Int -> Gen (Expression n d m)
-constantExpression size =
-    if size <= 1
-    then oneof [ const ]
-    else oneof [ const, call ]
-    where const = ExpConst `liftM` arbitrary
-          call = liftM2 ExpCall noFailFunction args
-          args = resize 4 (listOf subExpression)
-          subExpression = constantExpression (size `div` 2)
+          subExpression = expression mName (size `div` 2)
 
 instance Arbitrary RelOp where
     arbitrary = elements [RelLT, RelEq, RelGT]
 
-condition :: (Arbitrary d, CoArbitrary [d], Monad m) => Gen n -> Int -> Gen (Condition n d m)
-condition name size =
+condition :: (Arbitrary d, CoArbitrary [d], Monad m) => Maybe (Gen n) -> Int -> Gen (Condition n d m)
+condition mName size =
     if size <= 1
     then elements [ CondTrue, CondFalse ]
     else oneof [ return CondTrue,
@@ -47,24 +37,10 @@ condition name size =
                  liftM2 CondOr subCondition subCondition,
                  liftM3 CondRel arbitrary subExpression subExpression,
                  liftM2 CondCall noFailFunction args ]
-    where subCondition = condition name (size `div` 2)
-          subExpression = expression name (size `div`2)
+    where subCondition = condition mName (size `div` 2)
+          subExpression = expression mName (size `div`2)
           args = resize 4 (listOf subExpression)
 
-constantCondition :: (Arbitrary d, CoArbitrary [d], Monad m) => Int -> Gen (Condition n d m)
-constantCondition size =
-    if size <= 1
-    then elements [ CondTrue, CondFalse ]
-    else oneof [ return CondTrue,
-                 return CondFalse,
-                 CondNot `liftM` subCondition,
-                 liftM2 CondAnd subCondition subCondition,
-                 liftM2 CondOr subCondition subCondition,
-                 liftM3 CondRel arbitrary subExpression subExpression,
-                 liftM2 CondCall noFailFunction args ]
-    where subCondition = constantCondition (size `div` 2)
-          subExpression = constantExpression (size `div`2)
-          args = resize 4 (listOf subExpression)
   
 -- | Builds an arbitrary function that returns its result in a monad.
 --
@@ -96,12 +72,9 @@ unsatisfiableCondition names size =
 conditionAndSatisfyingTuples :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
                                 [n] -> Int -> Gen (Condition n d (Either String), [[d]])
 conditionAndSatisfyingTuples names size =
-  condition' size >>= \c -> (c,) `liftM` either (abort c) return (allSatisfying names c)
+  condition mNames size >>= \c -> (c,) `liftM` either (abort c) return (allSatisfying names c)
     where abort c = error . (("error determining all satisfying tuples for " ++ show c ++ ": ") ++) . show
-          condition' =
-            case names of
-              [] -> constantCondition
-              _ -> condition (elements names)
+          mNames = if null names then Nothing else Just (elements names)
               
 attrNamesIn c =
     case c of CondNot c' -> attrNamesIn c'
