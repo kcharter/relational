@@ -2,6 +2,7 @@
 
 module Relational.RelVar (RelVar, ToRelVar(..)) where
 
+import Data.String (IsString(..))
 import qualified Data.Text as T
 
 -- Relational variable names.
@@ -21,4 +22,7 @@ instance ToRelVar T.Text where
   
 instance ToRelVar String where
   relVar = RelVar . T.pack
+  
+instance IsString RelVar where
+  fromString = RelVar . T.pack
   
