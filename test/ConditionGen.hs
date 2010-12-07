@@ -10,6 +10,8 @@ import Data.Maybe (catMaybes)
 import Test.QuickCheck
 
 import Relational.Condition
+import Relational.Naive (RelationalMonad(..))
+import Relational.Naive.AttrName (AttrName)
 import MonadUtil (untilM)
 
 expression :: (Arbitrary d, CoArbitrary [d], Monad m) => Maybe (Gen n) -> Int -> Gen (Expression n d m)
@@ -55,24 +57,24 @@ noFailFunction :: (CoArbitrary [d], Arbitrary r, Monad m) => Gen ([d] -> m r)
 noFailFunction = arbitrary >>= \f -> return (return . f)
 
 -- | Builds a generator for satisfiable conditions paried with their satisfying tuples.
-satisfiableCondition :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
-                        [n] -> Int -> Gen (Condition n d (Either String), [[d]])
+satisfiableCondition :: (Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
+                        [AttrName] -> Int -> Gen (Condition AttrName d (RelationalMonad d), [[d]])
 satisfiableCondition names size =
   untilM (not . null . snd) (conditionAndSatisfyingTuples names size)
 
 -- | Builds a generator for conditions that are unsatisfiable.
-unsatisfiableCondition :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
-                          [n] -> Int -> Gen (Condition n d (Either String))
+unsatisfiableCondition :: (Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
+                          [AttrName] -> Int -> Gen (Condition AttrName d (RelationalMonad d))
 unsatisfiableCondition names size =
   fst `liftM` untilM (null . snd) (conditionAndSatisfyingTuples names size)
   
 -- | Builds a generator for conditions paired with the tuples that
 -- satisfy them. A satisfiable condition will have a non-empty list of
 -- satisfying tuples.
-conditionAndSatisfyingTuples :: (Ord n, Show n, Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
-                                [n] -> Int -> Gen (Condition n d (Either String), [[d]])
+conditionAndSatisfyingTuples :: (Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
+                                [AttrName] -> Int -> Gen (Condition AttrName d (RelationalMonad d), [[d]])
 conditionAndSatisfyingTuples names size =
-  condition mNames size >>= \c -> (c,) `liftM` either (abort c) return (allSatisfying names c)
+  condition mNames size >>= \c -> (c,) `liftM` either (abort c) return (runRel $ allSatisfying names c)
     where abort c = error . (("error determining all satisfying tuples for " ++ show c ++ ": ") ++) . show
           mNames = if null names then Nothing else Just (elements names)
               

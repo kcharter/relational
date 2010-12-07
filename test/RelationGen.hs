@@ -3,6 +3,7 @@ module RelationGen where
 import Control.Monad (liftM, liftM2, liftM3, liftM4, join)
 import Test.QuickCheck
 
+import Relational.Naive (runRel)
 import Relational.Naive.AttrName
 import Relational.Condition (Condition)
 import qualified Relational.Naive.Signature as Sig
@@ -58,10 +59,10 @@ relationOfSize g size =
     join (flip (relationWithSigAndSize g) size `liftM` arbitrary)
 
 makeOrDie :: (Ord a) => Sig.Signature -> [[a]] -> RN.Relation a
-makeOrDie sig = either failure id . C.make names
-    where failure msg = error ("Failed to generate a relation with signature " ++
+makeOrDie sig = either failure id . runRel . C.make names
+    where failure err = error ("Failed to generate a relation with signature " ++
                                show sig ++ ": " ++
-                               msg)
+                               show err)
           names = Sig.toList sig :: [AttrName]
 
 relationAndTwoAttrs :: (Ord a, Arbitrary a) => Gen (RN.Relation a, AttrName, AttrName)
@@ -82,10 +83,15 @@ relationAndAttrs sigN n =
 unionCompatiblePairAndAttrs :: (Ord a, Arbitrary a) => Gen ((RN.Relation a, RN.Relation a), [AttrName])
 unionCompatiblePairAndAttrs =
     do (x,y) <- unionCompatiblePair
-       allNames <- C.signature x
+       let allNames = signatureOrDie x
        n <- choose (0, length allNames)
        names <- subList allNames n
        return ((x,y), names)
+
+signatureOrDie :: (Ord a) => RN.Relation a -> [AttrName]
+signatureOrDie =
+  either failure id . runRel . C.signature
+  where failure err = error ("Unable to get attribute names from relation: " ++ show err)
 
 -- | A generator for pairs of relations with disjoint signatures, and
 -- hence suitable for Cartesian products and joins.
@@ -100,7 +106,7 @@ productCompatiblePair =
 -- of the tuples that satisfy the condition.
 productCompatiblePairAndSatisfiableCondition :: (Bounded a, Enum a, Ord a, Show a, Arbitrary a, CoArbitrary a) =>
                                                 Gen (RN.Relation a, RN.Relation a,
-                                                     Condition AttrName a (Either String))
+                                                     Condition AttrName a (RN.RelationalMonad a))
 productCompatiblePairAndSatisfiableCondition =
   do (s1,s2) <- disjointSignatures (signatures 3)
      (c,ts)  <- satisfiableCondition (Sig.toList s1 ++ Sig.toList s2) =<< choose (1,8)

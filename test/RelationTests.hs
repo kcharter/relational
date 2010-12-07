@@ -8,7 +8,7 @@ import Test.QuickCheck
 import qualified Relational.Class as R
 import Relational.Condition
 import Relational.Naive.AttrName
-import Relational.Naive (Relation)
+import Relational.Naive (Relation, RelationalMonad)
 import qualified Relational.Naive.Signature as Sig
 
 import AttrNameGen()
@@ -65,10 +65,10 @@ type RInt2 = (RInt, RInt)
 type RInt3 = (RInt, RInt, RInt)
 type RInt4 = (RInt, RInt, RInt, RInt)
 
-makeIntRelation :: [AttrName] -> [[Int]] -> Either String RInt
+makeIntRelation :: [AttrName] -> [[Int]] -> RelationalMonad Int RInt
 makeIntRelation = makeRelation
 
-makeRelation :: (Ord a) => [AttrName] -> [[a]] -> Either String (Relation a)
+makeRelation :: (Ord a) => [AttrName] -> [[a]] -> RelationalMonad a (Relation a)
 makeRelation = R.make
 
 
@@ -83,7 +83,7 @@ forAllRIntAndAttrs = forAll (do n <- choose (0,6); m <- choose (0,n); relationAn
 forAllUC2AndAttrs = forAll unionCompatiblePairAndAttrs
 
 type RSmall = Relation Small
-type CondSmall = Condition AttrName Small (Either String)
+type CondSmall = Condition AttrName Small (RelationalMonad Small)
 
 forAllRSmallAndSatCond = forAll rSmallAndSatCond
 

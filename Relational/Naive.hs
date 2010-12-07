@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances, FlexibleContexts, MultiParamTypeClasses, GeneralizedNewtypeDeriving, DeriveFunctor #-}
 
 {-|
 
@@ -7,20 +7,32 @@ for unit tests and prototypes.
 
 -}
 
-module Relational.Naive (Relation) where
+module Relational.Naive (Relation, RelationalMonad(..), RelationalMonadT(..)) where
 
 import Control.Monad (when, unless, liftM, foldM, filterM, liftM2)
-import Control.Monad.Error (Error, MonadError)
+import Control.Monad.Error (MonadError, ErrorT)
+import Control.Monad.Trans (MonadTrans, MonadIO)
 import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
 
 import Relational.Class
 import Relational.Condition
+import Relational.Error
 import Relational.Naive.AttrName
 import Relational.Naive.Error
 import qualified Relational.Naive.Signature as Sig
 
+-- | A monad for pure, in-memory relational computations.
+newtype RelationalMonad d a =
+  RelationalMonad { runRel :: Either (RelationalError AttrName) a }
+  deriving (Monad, Functor, MonadError (RelationalError AttrName))
+
+-- | A monad transformer that adds in-memory relational computations.
+newtype RelationalMonadT d m a =
+  RelationalMonadT { runRelT :: ErrorT (RelationalError AttrName) m a }
+  deriving (Monad, Functor, MonadError (RelationalError AttrName), MonadTrans, MonadIO)
+           
 data Relation a = Relation { relSig :: Sig.Signature,
                              relTupleSet :: S.Set (V.Vector a) } deriving (Eq, Ord, Show)
 
@@ -33,7 +45,7 @@ relTuples = map V.toList . S.toList . relTupleSet
 relEmpty :: Sig.Signature -> Relation a
 relEmpty s = Relation { relSig = s, relTupleSet = S.empty }
 
-relUnsafeAddTuple :: (Error e, MonadError e m, Ord a) => [AttrName] -> [a] -> Relation a -> m (Relation a)
+relUnsafeAddTuple :: (Ord a, MonadError (RelationalError AttrName) m) => [AttrName] -> [a] -> Relation a -> m (Relation a)
 relUnsafeAddTuple names values soFar =
     do when (nameCount /= valueCount) lengthMismatch
        return soFar{ relTupleSet = S.insert (mkTuple values) (relTupleSet soFar) }
@@ -46,24 +58,26 @@ relUnsafeAddTuple names values soFar =
           mkTuple =
               V.fromList . M.elems . M.fromList . zip names
 
-relMake :: (Error e, MonadError e m, Ord a) => [AttrName] -> [[a]] -> m (Relation a)
+
+relMake :: (Ord a, MonadError (RelationalError AttrName) m) => [AttrName] -> [[a]] -> m (Relation a)
 relMake names tuples =
     do sig <- Sig.safeFromList names
        foldM (flip (relUnsafeAddTuple names)) (relEmpty sig) tuples
 
-relUnion :: (Error e, MonadError e m, Ord a) => Relation a -> Relation a -> m (Relation a)
+relUnion :: (Ord a, MonadError (RelationalError AttrName) m) => Relation a -> Relation a -> m (Relation a)
 relUnion r s =
     do relCheckEqualSignatures r s
        return Relation { relSig = relSig r,
                          relTupleSet = S.union (relTupleSet r) (relTupleSet s) }
 
-relDifference :: (Error e, MonadError e m, Ord a) => Relation a -> Relation a -> m (Relation a)
+
+relDifference :: (Ord a, MonadError (RelationalError AttrName) m) => Relation a -> Relation a -> m (Relation a)
 relDifference r s =
     do relCheckEqualSignatures r s
        return Relation { relSig = relSig r,
                          relTupleSet = S.difference (relTupleSet r) (relTupleSet s) }
 
-relCheckEqualSignatures :: (Error e, MonadError e m) => Relation a -> Relation a -> m ()
+relCheckEqualSignatures :: (MonadError (RelationalError AttrName) m) => Relation a -> Relation a -> m ()
 relCheckEqualSignatures r s =
     when (rSig /= sSig) signatureMismatch
     where rSig = relSig r
@@ -74,7 +88,7 @@ relCheckEqualSignatures r s =
                    " versus " ++
                    show sSig ++ ".")
 
-relRename :: (Error e, MonadError e m, Ord a) => AttrName -> AttrName -> Relation a -> m (Relation a)
+relRename :: (Ord a, MonadError (RelationalError AttrName) m) => AttrName -> AttrName -> Relation a -> m (Relation a)
 relRename n m r =
     do unless (inSignature n) nNotInSignature
        (if m == n
@@ -91,7 +105,8 @@ relRename n m r =
                      in fst ++ (m:tail nRest)
           newSig = Sig.fromList newAttrs
               
-relProject :: (Error e, MonadError e m, Ord a) => [AttrName] -> Relation a -> m (Relation a)
+
+relProject :: (Ord a, MonadError (RelationalError AttrName) m) => [AttrName] -> Relation a -> m (Relation a)
 relProject names r =
     do mapM_ checkSigContains names
        foldM addNewTuple (relEmpty newSig) newTuples
@@ -107,7 +122,7 @@ relProject names r =
           oldNames = Sig.toList sig :: [AttrName]
           sig = relSig r
 
-relSelect :: (Error e, MonadError e m, Ord a) => Condition AttrName a m -> Relation a -> m (Relation a)
+relSelect :: (Ord a, MonadError (RelationalError AttrName) m) => Condition AttrName a m -> Relation a -> m (Relation a)
 relSelect c r =
     relPutTupleSet (relEmpty rSig) `liftM` selectedTupleSet
     where rSig = relSig r
@@ -121,7 +136,8 @@ relSelect c r =
                                       " in signature " ++ show rSig ++ ".")
           indexForName = M.fromList (zip (Sig.toList rSig) [0..])
 
-relCartesianProduct :: (Error e, MonadError e m, Ord a) => Relation a -> Relation a -> m (Relation a)
+
+relCartesianProduct :: (Ord a, MonadError (RelationalError AttrName) m) => Relation a -> Relation a -> m (Relation a)
 relCartesianProduct r s =
     do unless disjointSigs overlappingSigs
        return (relPutTupleSet (relEmpty newSig) newTupleSet)
@@ -148,7 +164,7 @@ relCartesianProduct r s =
 relPutTupleSet :: Relation a -> S.Set (V.Vector a) -> Relation a
 relPutTupleSet r tupleSet = r {relTupleSet = tupleSet}
 
-instance (Ord a) => Relational AttrName a (Relation a) where
+instance (Ord a) => MonadRelational AttrName a (Relation a) (RelationalMonad a) where
     signature = return . relSignature
     tuples = return . relTuples
     make = relMake
@@ -158,6 +174,16 @@ instance (Ord a) => Relational AttrName a (Relation a) where
     project = relProject
     select = relSelect
     cartesianProduct = relCartesianProduct
-
+    
+instance (Ord a, Monad m) => MonadRelational AttrName a (Relation a) (RelationalMonadT a m) where
+    signature = return . relSignature
+    tuples = return . relTuples
+    make = relMake
+    union = relUnion
+    difference = relDifference
+    rename = relRename
+    project = relProject
+    select = relSelect
+    cartesianProduct = relCartesianProduct
+  
 todo = error "Not implemented"
-
