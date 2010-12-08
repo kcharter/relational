@@ -49,7 +49,7 @@ propM_renameIsReversible (r, n) =
         else let n' = head s
              in do r' <- R.rename n' n r
                    r'' <- R.rename n n' r'
-                   return (r' == r''))
+                   return (r == r''))
 
 prop_canRemoveIntermediateRenames :: (Ord d) => (Relation d, AttrName, AttrName) -> Bool
 prop_canRemoveIntermediateRenames = noErr . propM_canRemoveIntermediateRenames
@@ -63,7 +63,7 @@ propM_canRemoveIntermediateRenames (r, n, m) =
         else do r' <- R.rename (head s) n r
                 r'' <- R.rename n m r'
                 r''' <- R.rename (head s) m r
-                return (r' == r'''))
+                return (r'' == r'''))
                
 
 prop_unionWithSelfIsSelf :: (Ord d) => Relation d -> Bool
@@ -212,7 +212,7 @@ prop_intersectionWithEmptyIsEmpty :: (Ord d) => Relation d -> Bool
 prop_intersectionWithEmptyIsEmpty = noErr . propM_intersectionWithEmptyIsEmpty
 
 propM_intersectionWithEmptyIsEmpty :: (R.MonadRelational n d r m, Eq r) => r -> m Bool
-propM_intersectionWithEmptyIsEmpty r = (r==) `liftM` (R.intersection r =<< emptyLike r)
+propM_intersectionWithEmptyIsEmpty r = emptyLike r >>= \e -> (e==) `liftM` R.intersection r e
 
 prop_intersectionIsCommutative :: (Ord d) => (Relation d, Relation d) -> Bool
 prop_intersectionIsCommutative = noErr . propM_intersectionIsCommutative
@@ -256,20 +256,6 @@ prop_projectionCommutesWithUnion = noErr. propM_projectionCommutesWithUnion
 propM_projectionCommutesWithUnion :: (R.MonadRelational n d r m, Eq r) =>
                                      ((r, r), [n]) -> m Bool
 propM_projectionCommutesWithUnion = propM_projectionCommutesWith R.union
-
-prop_projectionCommutesWithDifference :: (Ord d) => ((Relation d, Relation d), [AttrName]) -> Bool
-prop_projectionCommutesWithDifference = noErr. propM_projectionCommutesWithDifference
-
-propM_projectionCommutesWithDifference :: (R.MonadRelational n d r m, Eq r) =>
-                                          ((r, r), [n]) -> m Bool
-propM_projectionCommutesWithDifference = propM_projectionCommutesWith R.difference
-
-prop_projectionCommutesWithIntersection :: (Ord d) => ((Relation d, Relation d), [AttrName]) -> Bool
-prop_projectionCommutesWithIntersection = noErr. propM_projectionCommutesWithIntersection
-
-propM_projectionCommutesWithIntersection :: (R.MonadRelational n d r m, Eq r) =>
-                                            ((r, r), [n]) -> m Bool
-propM_projectionCommutesWithIntersection = propM_projectionCommutesWith R.intersection
 
 propM_projectionCommutesWith :: (R.MonadRelational n d r m, Eq r) =>
                                 (r -> r -> m r) -> ((r, r), [n]) -> m Bool
@@ -392,7 +378,7 @@ propM_commutesWith f g (x,y) =
     eqM (f =<< g x y) (join (liftM2 g (f x) (f y)))
 
 noErr :: RelationalMonad d Bool -> Bool
-noErr = either (const False) (const True) . runRel
+noErr = either (const False) id . runRel
 
 eqM :: (Monad m, Eq a) => m a -> m a -> m Bool
 eqM = liftM2 (==)

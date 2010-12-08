@@ -48,8 +48,6 @@ run = do quickCheck $ forAll (inputs 5) (prop_makeSigAndTuples makeIntRelation :
          quickCheck $ forAllUC2 (prop_intersectionLikeSetIntersection :: RInt2 -> Bool)
          quickCheck $ forAllRIntAndTwoAttrs (prop_exclusionsCommute :: (RInt, AttrName, AttrName) -> Bool)
          quickCheck $ forAllUC2AndAttrs (prop_projectionCommutesWithUnion :: (RInt2, [AttrName]) -> Bool)
-         quickCheck $ forAllUC2AndAttrs (prop_projectionCommutesWithDifference :: (RInt2, [AttrName]) -> Bool)
-         quickCheck $ forAllUC2AndAttrs (prop_projectionCommutesWithIntersection :: (RInt2, [AttrName]) -> Bool)
          quickCheck $ forAllRIntAndAttrs (prop_projectionLikeMapProjection :: (RInt, [AttrName]) -> Bool)
          quickCheck (prop_selectTrueIsIdentity :: RInt -> Bool)
          quickCheck (prop_selectFalseIsEmpty :: RInt -> Bool)
