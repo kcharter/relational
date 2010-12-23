@@ -6,7 +6,7 @@ module Relational.Error where
 
 import Control.Monad.Error (Error(..))
 
-import Relational.RelVar
+import Relational.RelName
 
 -- | Special-purpose errors for relational operations.
 data RelationalError n =
@@ -18,8 +18,8 @@ data RelationalError n =
     -- ^ Two signatures differ, and so are not union-compatible.
     OverlappingSignatures [n] [n] |
     -- ^ Two signatures are not disjoint, and so are not product-compatible.
-    NoSuchRelVar RelVar |
-    -- ^ Reference to a non-existent relational variable name.
+    NoSuchRelName RelName |
+    -- ^ Reference to a non-existent relation name.
     GeneralError String
     -- ^ A catch-all for all other errors.
     deriving (Eq, Ord, Show)
