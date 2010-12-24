@@ -1,23 +1,23 @@
 {-| Generators for attribute names. -}
 
-module AttrNameGen where
+module ColNameGen where
 
 import Control.Monad (liftM)
 import Test.QuickCheck
 
-import Relational.Naive.AttrName
+import Relational.ColName
 
-instance Arbitrary AttrName where
-    arbitrary = attrNames alphas 8
+instance Arbitrary ColName where
+    arbitrary = colNames alphas 8
                 where alphas = map (:[]) (['a'..'z'] ++ ['A'..'Z'] )
     shrink = const []
 
--- | Generates attribute names from a non-empty collection of base
+-- | Generates column names from a non-empty collection of base
 -- names, and numeric subscripts ranging from zero to some maximum.
-attrNames :: [String] -> Int -> Gen AttrName
-attrNames baseNames maxSubscript =
+colNames :: [String] -> Int -> Gen ColName
+colNames baseNames maxSubscript =
     do baseName <- genBaseName
-       (toAttrName . finishName baseName) `liftM` genMaybeSubscript
+       (colName . finishName baseName) `liftM` genMaybeSubscript
     where genBaseName = elements baseNames
           genMaybeSubscript =
               frequency [(10, return Nothing),

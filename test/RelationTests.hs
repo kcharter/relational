@@ -6,12 +6,12 @@ import Control.Monad (liftM2)
 import Test.QuickCheck
 
 import qualified Relational.Class as R
+import Relational.ColName
 import Relational.Condition
-import Relational.Naive.AttrName
 import Relational.Naive (Relation, RelationalMonad)
 import qualified Relational.Naive.Signature as Sig
 
-import AttrNameGen()
+import ColNameGen()
 import ConditionGen
 import RelationGen
 import RelationalProps
@@ -19,10 +19,10 @@ import SignatureGen (nonEmptySignatures, disjointSignatures)
 import SubList
 
 run :: IO ()
-run = do quickCheck $ forAll (inputs 5) (prop_makeSigAndTuples makeIntRelation :: ([AttrName], [[Int]]) -> Bool)
+run = do quickCheck $ forAll (inputs 5) (prop_makeSigAndTuples makeIntRelation :: ([ColName], [[Int]]) -> Bool)
          quickCheck (prop_canRenameExistingToItself :: RInt -> Bool)
-         quickCheck (prop_renameIsReversible :: (RInt, AttrName) -> Bool)
-         quickCheck (prop_canRemoveIntermediateRenames :: (RInt, AttrName, AttrName) -> Bool)
+         quickCheck (prop_renameIsReversible :: (RInt, ColName) -> Bool)
+         quickCheck (prop_canRemoveIntermediateRenames :: (RInt, ColName, ColName) -> Bool)
          quickCheck (prop_unionWithSelfIsSelf :: RInt -> Bool)
          quickCheck (prop_unionWithEmptyIsSelf :: RInt -> Bool)
          quickCheck $ forAllUC2 (prop_unionIsCommutative :: RInt2 -> Bool)
@@ -46,15 +46,15 @@ run = do quickCheck $ forAll (inputs 5) (prop_makeSigAndTuples makeIntRelation :
          quickCheck $ forAllUC3 (prop_intersectionIsAssociative :: RInt3 -> Bool)
          quickCheck $ forAllUC3 (prop_intersectionDistributesOverUnion :: RInt3 -> Bool)
          quickCheck $ forAllUC2 (prop_intersectionLikeSetIntersection :: RInt2 -> Bool)
-         quickCheck $ forAllRIntAndTwoAttrs (prop_exclusionsCommute :: (RInt, AttrName, AttrName) -> Bool)
-         quickCheck $ forAllUC2AndAttrs (prop_projectionCommutesWithUnion :: (RInt2, [AttrName]) -> Bool)
-         quickCheck $ forAllRIntAndAttrs (prop_projectionLikeMapProjection :: (RInt, [AttrName]) -> Bool)
+         quickCheck $ forAllRIntAndTwoAttrs (prop_exclusionsCommute :: (RInt, ColName, ColName) -> Bool)
+         quickCheck $ forAllUC2AndAttrs (prop_projectionCommutesWithUnion :: (RInt2, [ColName]) -> Bool)
+         quickCheck $ forAllRIntAndAttrs (prop_projectionLikeMapProjection :: (RInt, [ColName]) -> Bool)
          quickCheck (prop_selectTrueIsIdentity :: RInt -> Bool)
          quickCheck (prop_selectFalseIsEmpty :: RInt -> Bool)
          quickCheck $ forAllRSmallAndUnsatCond (prop_selectUnsatisfiableIsEmpty :: (RSmall, CondSmall) -> Bool)
          quickCheck $ forAllRSmallAndSatCond (prop_selectLikeFilter :: (RSmall, CondSmall) -> Bool)
          quickCheck (prop_prodWithNoAttrsIsId :: RSmall -> Bool)
-         quickCheck $ forAll rSmallAndDistinctAttrs (prop_prodWithEmptyIsEmpty :: (RSmall, [AttrName]) -> Bool)
+         quickCheck $ forAll rSmallAndDistinctAttrs (prop_prodWithEmptyIsEmpty :: (RSmall, [ColName]) -> Bool)
          quickCheck $ forAllPCPair (prop_prodLikeConcat :: (RSmall, RSmall) -> Bool)
          quickCheck $ forAllPCPairAndSatCond (prop_joinLikeSelectOnProd :: (RSmall, RSmall, CondSmall) -> Bool)
 
@@ -63,10 +63,10 @@ type RInt2 = (RInt, RInt)
 type RInt3 = (RInt, RInt, RInt)
 type RInt4 = (RInt, RInt, RInt, RInt)
 
-makeIntRelation :: [AttrName] -> [[Int]] -> RelationalMonad Int RInt
+makeIntRelation :: [ColName] -> [[Int]] -> RelationalMonad Int RInt
 makeIntRelation = makeRelation
 
-makeRelation :: (Ord a) => [AttrName] -> [[a]] -> RelationalMonad a (Relation a)
+makeRelation :: (Ord a) => [ColName] -> [[a]] -> RelationalMonad a (Relation a)
 makeRelation = R.make
 
 
@@ -74,14 +74,14 @@ forAllUC2 = forAll unionCompatiblePair
 forAllUC3 = forAll unionCompatibleTriple
 forAllUC4 = forAll unionCompatibleFour
 
-forAllRIntAndTwoAttrs = forAll (relationAndTwoAttrs :: Gen (RInt, AttrName, AttrName))
+forAllRIntAndTwoAttrs = forAll (relationAndTwoAttrs :: Gen (RInt, ColName, ColName))
 
 forAllRIntAndAttrs = forAll (do n <- choose (0,6); m <- choose (0,n); relationAndAttrs n m)
 
 forAllUC2AndAttrs = forAll unionCompatiblePairAndAttrs
 
 type RSmall = Relation Small
-type CondSmall = Condition AttrName Small (RelationalMonad Small)
+type CondSmall = Condition Small (RelationalMonad Small)
 
 forAllRSmallAndSatCond = forAll rSmallAndSatCond
 
@@ -102,7 +102,7 @@ rSmallAndUnsatCond =
                    r <- relationWithSig sig
                    return (r, c)
 
-rSmallAndDistinctAttrs :: Gen (RSmall, [AttrName])
+rSmallAndDistinctAttrs :: Gen (RSmall, [ColName])
 rSmallAndDistinctAttrs =
   disjointSignatures arbitrary >>= \(s1,s2) -> liftM2 (,) (relationWithSig s1) (return (Sig.toList s2))
      

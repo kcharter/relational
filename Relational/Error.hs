@@ -6,17 +6,18 @@ module Relational.Error where
 
 import Control.Monad.Error (Error(..))
 
+import Relational.ColName
 import Relational.RelName
 
 -- | Special-purpose errors for relational operations.
-data RelationalError n =
-    DuplicatedName n |
+data RelationalError =
+    DuplicatedName ColName |
     -- ^ A name is duplicated in 'make'.
-    NoSuchName n |
+    NoSuchName ColName |
     -- ^ An expression references an attribute that doesn't exist.
-    DifferingSignatures [n] [n] |
+    DifferingSignatures [ColName] [ColName] |
     -- ^ Two signatures differ, and so are not union-compatible.
-    OverlappingSignatures [n] [n] |
+    OverlappingSignatures [ColName] [ColName] |
     -- ^ Two signatures are not disjoint, and so are not product-compatible.
     NoSuchRelName RelName |
     -- ^ Reference to a non-existent relation name.
@@ -24,6 +25,6 @@ data RelationalError n =
     -- ^ A catch-all for all other errors.
     deriving (Eq, Ord, Show)
 
-instance Error (RelationalError n) where
+instance Error RelationalError where
     strMsg = GeneralError
 

@@ -14,6 +14,7 @@ module Relational.Class where
 
 import Control.Monad.Error (MonadError)
 
+import Relational.ColName (ColName)
 import Relational.Condition
 import Relational.Error
 
@@ -27,10 +28,10 @@ import Relational.Error
 -- 'join' or 'cartesianProduct'. A more sophisticated implementation
 -- that attempts to reduce the work done in 'join' will probably
 -- implement both 'join' and 'cartesianProduct'.
-class (Ord n, Ord d, MonadError (RelationalError n) m) => MonadRelational n d r m | m -> r, r -> n, r -> d where
+class (Ord d, MonadError RelationalError m) => MonadRelational d r m | m -> r, r -> d where
     -- | Extracts the signature of a relation as a list of
     -- attribute names.
-    signature :: r -> m [n]
+    signature :: r -> m [ColName]
     -- | Extracts the tuples of a relation, as a list of lists of
     -- data values. Each data list must have the same length as
     -- in 'signature', and the data must be in the same order as
@@ -43,7 +44,7 @@ class (Ord n, Ord d, MonadError (RelationalError n) m) => MonadRelational n d r 
     -- error for the tuple list to contain duplicates, although
     -- the duplicates must appear only once in the tuples of
     -- the result.
-    make :: [n] -> [[d]] -> m r
+    make :: [ColName] -> [[d]] -> m r
     -- | Computes the relational union of two relational
     -- values. The relational values must have equal signatures.
     union :: r -> r -> m r
@@ -65,19 +66,19 @@ class (Ord n, Ord d, MonadError (RelationalError n) m) => MonadRelational n d r 
     -- In @rename n m r@, it is an error if @n@ is not in @r@'s
     -- signature, and it is also an error if @m@ is already in @r@'s
     -- signature, unless @n == m@.
-    rename :: n -> n -> r -> m r
+    rename :: ColName -> ColName -> r -> m r
     -- | Computes a new relational value that contains a subset of
     -- the attributes of another relational value.
     --
     -- In @project names r@, it is an error if any of @names@ is not
     -- in the signature of @r@. @names@ may contain duplicates, but
     -- the final signature contains each name only once.
-    project :: [n] -> r -> m r
+    project :: [ColName] -> r -> m r
     -- | Computes a new relational value with the same signature as an
     -- existing one, but with a subset of the existing tuples. The
     -- subset comprises exactly those tuples that pass a given
     -- condition.
-    select :: Condition n d m -> r -> m r
+    select :: Condition d m -> r -> m r
     -- | Computes a new relational value equivalent to the Cartesian
     -- product of two others, followed by a selection. The default
     -- implementation performs a 'select' on the result of
@@ -88,7 +89,7 @@ class (Ord n, Ord d, MonadError (RelationalError n) m) => MonadRelational n d r 
     --
     -- In @join c r s@, it is an error if the signatures of @r@ and
     -- @s@ overlap.
-    join :: Condition n d m -> r -> r -> m r
+    join :: Condition d m -> r -> r -> m r
     join c x y = cartesianProduct x y >>= select c
     -- | Computes the relational Cartesian product of two relational
     -- values. The signature of the result is the union of the two

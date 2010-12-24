@@ -9,12 +9,12 @@ import qualified Data.Map as DM
 import Data.Maybe (catMaybes)
 import Test.QuickCheck
 
+import Relational.ColName (ColName)
 import Relational.Condition
 import Relational.Naive (RelationalMonad(..))
-import Relational.Naive.AttrName (AttrName)
 import MonadUtil (untilM)
 
-expression :: (Arbitrary d, CoArbitrary [d], Monad m) => Maybe (Gen n) -> Int -> Gen (Expression n d m)
+expression :: (Arbitrary d, CoArbitrary [d], Monad m) => Maybe (Gen ColName) -> Int -> Gen (Expression d m)
 expression mName size =
     if size <= 1
     then oneof $ maybeRef ++ [ const ]
@@ -28,7 +28,7 @@ expression mName size =
 instance Arbitrary RelOp where
     arbitrary = elements [RelLT, RelEq, RelGT]
 
-condition :: (Arbitrary d, CoArbitrary [d], Monad m) => Maybe (Gen n) -> Int -> Gen (Condition n d m)
+condition :: (Arbitrary d, CoArbitrary [d], Monad m) => Maybe (Gen ColName) -> Int -> Gen (Condition d m)
 condition mName size =
     if size <= 1
     then elements [ CondTrue, CondFalse ]
@@ -58,13 +58,13 @@ noFailFunction = arbitrary >>= \f -> return (return . f)
 
 -- | Builds a generator for satisfiable conditions paried with their satisfying tuples.
 satisfiableCondition :: (Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
-                        [AttrName] -> Int -> Gen (Condition AttrName d (RelationalMonad d), [[d]])
+                        [ColName] -> Int -> Gen (Condition d (RelationalMonad d), [[d]])
 satisfiableCondition names size =
   untilM (not . null . snd) (conditionAndSatisfyingTuples names size)
 
 -- | Builds a generator for conditions that are unsatisfiable.
 unsatisfiableCondition :: (Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
-                          [AttrName] -> Int -> Gen (Condition AttrName d (RelationalMonad d))
+                          [ColName] -> Int -> Gen (Condition d (RelationalMonad d))
 unsatisfiableCondition names size =
   fst `liftM` untilM (null . snd) (conditionAndSatisfyingTuples names size)
   
@@ -72,7 +72,7 @@ unsatisfiableCondition names size =
 -- satisfy them. A satisfiable condition will have a non-empty list of
 -- satisfying tuples.
 conditionAndSatisfyingTuples :: (Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
-                                [AttrName] -> Int -> Gen (Condition AttrName d (RelationalMonad d), [[d]])
+                                [ColName] -> Int -> Gen (Condition d (RelationalMonad d), [[d]])
 conditionAndSatisfyingTuples names size =
   condition mNames size >>= \c -> (c,) `liftM` either (abort c) return (runRel $ allSatisfying names c)
     where abort c = error . (("error determining all satisfying tuples for " ++ show c ++ ": ") ++) . show
@@ -90,21 +90,21 @@ attrNamesIn c =
                         ExpCall _ exps -> concatMap attrNamesInExp exps
                         _ -> []
 
-allSatisfying :: (Show n, Ord n, Ord d, Bounded d, Enum d, Error e, MonadError e m) =>
-                 [n] -> Condition n d m -> m [[d]]
+allSatisfying :: (Ord d, Bounded d, Enum d, Error e, MonadError e m) =>
+                 [ColName] -> Condition d m -> m [[d]]
 allSatisfying names c = map projectNames `liftM` satisfying c (allTuples names)
   where projectNames m = catMaybes $ map (flip DM.lookup m) names
 
-satisfying :: (Show n, Ord n, Ord d, Error e, MonadError e m) =>
-              Condition n d m -> [DM.Map n d] -> m [DM.Map n d]
+satisfying :: (Ord d, Error e, MonadError e m) =>
+              Condition d m -> [DM.Map ColName d] -> m [DM.Map ColName d]
 satisfying c = filterM (evalOn c)
 
-evalOn :: (Show n, Ord n, Ord d, Error e, MonadError e m) => Condition n d m -> DM.Map n d -> m Bool
+evalOn :: (Ord d, Error e, MonadError e m) => Condition d m -> DM.Map ColName d -> m Bool
 evalOn c m = evalCondition (lookup m) c
   where lookup m n = maybe (noSuchName n) return (DM.lookup n m)
         noSuchName n = throwError $ strMsg $ "Bad name " ++ show n
 
-allTuples :: (Bounded d, Enum d, Ord n) => [n] -> [DM.Map n d]
+allTuples :: (Bounded d, Enum d) => [ColName] -> [DM.Map ColName d]
 allTuples [] = [DM.empty]
 allTuples names =
     let names' = reverse $ nub $ sort names

@@ -16,31 +16,30 @@ import Control.Monad.Error (Error, MonadError)
 import Data.List (intercalate)
 import qualified Data.Set as S
 
-import Relational.Naive.AttrName
+import Relational.ColName
 import Relational.Naive.Error
 
-newtype Signature = Signature (S.Set AttrName) deriving (Eq, Ord)
+newtype Signature = Signature (S.Set ColName) deriving (Eq, Ord)
 
 instance Show Signature where
     show (Signature names) =
         "{" ++ intercalate "," (map show (S.toList names)) ++ "}"
 
-fromList :: (ToAttrName a) => [a] -> Signature
-fromList = Signature . S.fromList . map toAttrName
+fromList :: (ToColName a) => [a] -> Signature
+fromList = Signature . S.fromList . map colName
 
-safeFromList :: (ToAttrName a, Error e, MonadError e m) => [a] -> m Signature
+safeFromList :: (ToColName a, Error e, MonadError e m) => [a] -> m Signature
 safeFromList = (Signature `liftM`) . foldM addName S.empty 
     where addName soFar n =
               when (S.member n' soFar) (duplicateName n') >> return (S.insert n' soFar)
-              where n' = toAttrName n
-          duplicateName n = die ("'" ++ n' ++ "' appears more than once.")
-              where n' = fromAttrName n
+              where n' = colName n
+          duplicateName n = die ("'" ++ show n ++ "' appears more than once.")
 
-toSet :: Signature -> S.Set AttrName
+toSet :: Signature -> S.Set ColName
 toSet (Signature s) = s
 
-toList :: (FromAttrName a) => Signature -> [a]
-toList = map fromAttrName . S.toList . toSet
+toList :: Signature -> [ColName]
+toList = S.toList . toSet
 
 empty :: Signature
 empty = Signature S.empty
@@ -51,8 +50,8 @@ size = liftSet S.size
 null :: Signature -> Bool
 null = liftSet S.null
 
-contains :: (ToAttrName a) => a -> Signature -> Bool
-contains = liftSet . S.member . toAttrName
+contains :: (ToColName a) => a -> Signature -> Bool
+contains = liftSet . S.member . colName
 
 union :: Signature -> Signature -> Signature
 union s = Signature . liftSet2 S.union s
@@ -63,9 +62,9 @@ intersection s = Signature . liftSet2 S.intersection s
 disjoint :: Signature -> Signature -> Bool
 disjoint s1 s2 = null (s1 `intersection` s2)
 
-liftSet :: (S.Set AttrName -> a) -> Signature -> a
+liftSet :: (S.Set ColName -> a) -> Signature -> a
 liftSet = (. toSet)
 
-liftSet2 :: (S.Set AttrName -> S.Set AttrName -> a) -> Signature -> Signature -> a
+liftSet2 :: (S.Set ColName -> S.Set ColName -> a) -> Signature -> Signature -> a
 liftSet2 f s r = f (toSet s) (toSet r)
 

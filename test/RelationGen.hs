@@ -3,9 +3,9 @@ module RelationGen where
 import Control.Monad (liftM, liftM2, liftM3, liftM4, join)
 import Test.QuickCheck
 
-import Relational.Naive (runRel)
-import Relational.Naive.AttrName
+import Relational.ColName
 import Relational.Condition (Condition)
+import Relational.Naive (runRel)
 import qualified Relational.Naive.Signature as Sig
 import qualified Relational.Class as C
 import qualified Relational.Naive as RN
@@ -17,7 +17,7 @@ import SubList (subList)
 instance (Ord a, Arbitrary a) => Arbitrary (RN.Relation a) where
     arbitrary = join (relationOfSize arbitrary `liftM` choose (0,6))
 
-inputs :: (Arbitrary a) => Int -> Gen ([AttrName], [[a]])
+inputs :: (Arbitrary a) => Int -> Gen ([ColName], [[a]])
 inputs maxAttrs =
     do names <- Sig.toList `liftM` signatures maxAttrs
        tuples <- tuples (length names)
@@ -63,9 +63,9 @@ makeOrDie sig = either failure id . runRel . C.make names
     where failure err = error ("Failed to generate a relation with signature " ++
                                show sig ++ ": " ++
                                show err)
-          names = Sig.toList sig :: [AttrName]
+          names = Sig.toList sig
 
-relationAndTwoAttrs :: (Ord a, Arbitrary a) => Gen (RN.Relation a, AttrName, AttrName)
+relationAndTwoAttrs :: (Ord a, Arbitrary a) => Gen (RN.Relation a, ColName, ColName)
 relationAndTwoAttrs =
     (\(r, a1:a2:_) -> (r,a1,a2)) `liftM` relationAndAttrs 4 2
 
@@ -73,14 +73,14 @@ relationAndTwoAttrs =
 -- containing a relation of @sigN@ attributes, and a list of @n@
 -- attribute names drawn from the signature. This is meant for tests
 -- that exercise projection.
-relationAndAttrs :: (Ord a, Arbitrary a) => Int -> Int -> Gen (RN.Relation a, [AttrName])
+relationAndAttrs :: (Ord a, Arbitrary a) => Int -> Int -> Gen (RN.Relation a, [ColName])
 relationAndAttrs sigN n =
     do sig <- signaturesOfSize sigN
        tuples <- tuples sigN
        subSig <- subList (Sig.toList sig) n
        return (makeOrDie sig tuples, subSig)
 
-unionCompatiblePairAndAttrs :: (Ord a, Arbitrary a) => Gen ((RN.Relation a, RN.Relation a), [AttrName])
+unionCompatiblePairAndAttrs :: (Ord a, Arbitrary a) => Gen ((RN.Relation a, RN.Relation a), [ColName])
 unionCompatiblePairAndAttrs =
     do (x,y) <- unionCompatiblePair
        let allNames = signatureOrDie x
@@ -88,7 +88,7 @@ unionCompatiblePairAndAttrs =
        names <- subList allNames n
        return ((x,y), names)
 
-signatureOrDie :: (Ord a) => RN.Relation a -> [AttrName]
+signatureOrDie :: (Ord a) => RN.Relation a -> [ColName]
 signatureOrDie =
   either failure id . runRel . C.signature
   where failure err = error ("Unable to get attribute names from relation: " ++ show err)
@@ -106,7 +106,7 @@ productCompatiblePair =
 -- of the tuples that satisfy the condition.
 productCompatiblePairAndSatisfiableCondition :: (Bounded a, Enum a, Ord a, Show a, Arbitrary a, CoArbitrary a) =>
                                                 Gen (RN.Relation a, RN.Relation a,
-                                                     Condition AttrName a (RN.RelationalMonad a))
+                                                     Condition a (RN.RelationalMonad a))
 productCompatiblePairAndSatisfiableCondition =
   do (s1,s2) <- disjointSignatures (signatures 3)
      (c,ts)  <- satisfiableCondition (Sig.toList s1 ++ Sig.toList s2) =<< choose (1,8)

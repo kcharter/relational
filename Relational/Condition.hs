@@ -8,28 +8,30 @@ module Relational.Condition (Condition(..),
 import Control.Monad (liftM, liftM2)
 import Data.List (intercalate)
 
+import Relational.ColName (ColName)
+
 -- | Selection conditions, used in selections and joins.
 -- This is an abstract syntax for a simple language of boolean
 -- conditions on tuples. In practice, the third type parameter
 -- @m@ should be some kind of error monad.
-data Condition n d m =
+data Condition d m =
     CondTrue |
     -- ^ The true constant.
     CondFalse |
     -- ^ The false constant.
-    CondNot (Condition n d m) |
+    CondNot (Condition d m) |
     -- ^ Logical not.
-    CondAnd (Condition n d m) (Condition n d m) |
+    CondAnd (Condition d m) (Condition d m) |
     -- ^ Logical and.
-    CondOr (Condition n d m) (Condition n d m) |
+    CondOr (Condition d m) (Condition d m) |
     -- ^ Logical or.
-    CondRel RelOp (Expression n d m) (Expression n d m) |
+    CondRel RelOp (Expression d m) (Expression d m) |
     -- ^ A relational test on two data expressions.
-    CondCall ([d] -> m Bool) [Expression n d m]
+    CondCall ([d] -> m Bool) [Expression d m]
     -- ^ The result of calling a test function on a list of
     -- argument values.
 
-instance (Show n, Show d) => Show (Condition n d m) where
+instance (Show d) => Show (Condition d m) where
     show CondTrue = "true"
     show CondFalse = "false"
     show (CondNot c) = "not (" ++ show c ++ ")"
@@ -53,16 +55,16 @@ instance Show RelOp where
     show RelGT = ">"
 
 -- | An expression that produces a data value from an implicit tuple.
-data Expression n d m =
+data Expression d m =
     ExpConst d |
     -- ^ A constant data value.
-    ExpValueOf n |
+    ExpValueOf ColName |
     -- ^ The value of the named attribute on the tuple.
-    ExpCall ([d] -> m d) [Expression n d m]
+    ExpCall ([d] -> m d) [Expression d m]
     -- ^ The result of calling a function on a list of argument
     -- expressions.
 
-instance (Show n, Show d) => Show (Expression n d m) where
+instance (Show d) => Show (Expression d m) where
     show (ExpConst x) = show x
     show (ExpValueOf n) = show n
     show (ExpCall _ exps) = "<func>(" ++ intercalate "," (map show exps) ++ ")"
@@ -75,7 +77,7 @@ instance (Show n, Show d) => Show (Expression n d m) where
 -- evaluate conditions directly without any kind of
 -- transformation. The evaluation here is generic; all an
 -- implementation need do is provide a lookup function for each tuple.
-evalCondition :: (Monad m, Ord d) => (n -> m d) -> Condition n d m -> m Bool
+evalCondition :: (Monad m, Ord d) => (ColName -> m d) -> Condition d m -> m Bool
 evalCondition lookup c =
     case c of
       CondTrue ->
