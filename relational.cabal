@@ -12,6 +12,7 @@ library
                    Relational.Error,
                    Relational.Naive,
                    Relational.Naive.Error,
+                   Relational.Naive.Relation,
                    Relational.Naive.Signature,
                    Relational.RelName
   build-depends:   base >= 4 && < 5,
