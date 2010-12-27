@@ -2,11 +2,13 @@
 
 {-|
 
-A type class for relational data, 'Relational'.
+Type classes for monads that support relational-style queries, 
+and database-style updates.
 
-The class is meant to be abstract enough that it can be implemented by
-in-memory data structures, by interactions with a relational database,
-or by the AST for a language of relational expressions.
+The classes are meant to be abstract enough that they can be
+implemented by in-memory data structures, by interactions with a
+relational database, or by the AST for a language of relational
+expressions.
 
 -}
 
@@ -17,11 +19,12 @@ import Control.Monad.Error (MonadError)
 import Relational.ColName (ColName)
 import Relational.Condition
 import Relational.Error
+import Relational.RelName (RelName)
 
--- | Relational types. A relational type supports the six fundamental
--- operations of the relational algebra: union, difference, attribute
--- renaming, projection, selection, and either cartesian product or
--- (theta) join.
+-- | A class of monads that support relational values and queries. The
+-- class supports the six fundamental operations of the relational
+-- algebra: union, difference, attribute renaming, projection,
+-- selection, and either cartesian product or (theta) join.
 --
 -- A minimal implementation includes 'signature', 'tuples', 'make',
 -- 'union', 'difference', 'rename', 'project', 'select' and either
@@ -103,4 +106,21 @@ class (Ord d, MonadError RelationalError m) => MonadRelational d r m | m -> r, r
     cartesianProduct :: r -> r -> m r
     cartesianProduct = join CondTrue
 
-  
+-- | A class for monads that support relational database-like
+-- operations. The additional operations all involve relational
+-- variables, named relations that can be created, destroyed,
+-- retrieved, and updated.
+class (Ord d, MonadRelational d r m) => MonadDB d r m where
+  -- | Creates a new relational variable with a given signature and an empty relation.
+  createVar :: RelName -> [ColName] -> m ()
+  -- | Discards a relational variable and its relation.
+  dropVar :: RelName -> m ()
+  -- | Gets the relation for a given relational variable.
+  getVar :: RelName -> m r
+  -- | Inserts a tuple into the relation held in a relational variable.
+  insert :: RelName -> [d] -> m ()
+  -- | Deletes all the tuples matching a given condition from the
+  -- relation held in a relational variable.
+  delete :: RelName -> Condition d m -> m ()
+  -- | Updates fields by evaluating expressions, for each tuple matching a condition.
+  update :: RelName -> [(ColName, Expression d m)] -> Condition d m -> m ()
