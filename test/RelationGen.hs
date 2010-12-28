@@ -5,7 +5,7 @@ import Test.QuickCheck
 
 import Relational.ColName
 import Relational.Condition (Condition)
-import Relational.Naive (runRel)
+import Relational.Naive (evalPure)
 import qualified Relational.Naive.Signature as Sig
 import qualified Relational.Class as C
 import qualified Relational.Naive as RN
@@ -59,7 +59,7 @@ relationOfSize g size =
     join (flip (relationWithSigAndSize g) size `liftM` arbitrary)
 
 makeOrDie :: (Ord a) => Sig.Signature -> [[a]] -> RN.Relation a
-makeOrDie sig = either failure id . runRel . C.make names
+makeOrDie sig = either failure id . evalPure . C.make names
     where failure err = error ("Failed to generate a relation with signature " ++
                                show sig ++ ": " ++
                                show err)
@@ -90,7 +90,7 @@ unionCompatiblePairAndAttrs =
 
 signatureOrDie :: (Ord a) => RN.Relation a -> [ColName]
 signatureOrDie =
-  either failure id . runRel . C.signature
+  either failure id . evalPure . C.signature
   where failure err = error ("Unable to get attribute names from relation: " ++ show err)
 
 -- | A generator for pairs of relations with disjoint signatures, and

@@ -11,7 +11,7 @@ import Test.QuickCheck
 
 import Relational.ColName (ColName)
 import Relational.Condition
-import Relational.Naive (RelationalMonad(..))
+import Relational.Naive (RelationalMonad(..), evalPure)
 import MonadUtil (untilM)
 
 expression :: (Arbitrary d, CoArbitrary [d], Monad m) => Maybe (Gen ColName) -> Int -> Gen (Expression d m)
@@ -74,7 +74,7 @@ unsatisfiableCondition names size =
 conditionAndSatisfyingTuples :: (Ord d, Bounded d, Enum d, Arbitrary d, CoArbitrary d, Show d) =>
                                 [ColName] -> Int -> Gen (Condition d (RelationalMonad d), [[d]])
 conditionAndSatisfyingTuples names size =
-  condition mNames size >>= \c -> (c,) `liftM` either (abort c) return (runRel $ allSatisfying names c)
+  condition mNames size >>= \c -> (c,) `liftM` either (abort c) return (evalPure $ allSatisfying names c)
     where abort c = error . (("error determining all satisfying tuples for " ++ show c ++ ": ") ++) . show
           mNames = if null names then Nothing else Just (elements names)
               

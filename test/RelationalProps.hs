@@ -9,7 +9,7 @@ import qualified Data.Set as DS
 import qualified Relational.Class as R
 import Relational.ColName
 import Relational.Condition
-import Relational.Naive (Relation, RelationalMonad(..))
+import Relational.Naive (Relation, RelationalMonad, evalPure)
 import ConditionGen (satisfying)
 
 prop_makeSigAndTuples :: (Ord d) => ([ColName] -> [[d]] -> RelationalMonad d (Relation d)) -> ([ColName], [[d]]) -> Bool
@@ -378,7 +378,7 @@ propM_commutesWith f g (x,y) =
     eqM (f =<< g x y) (join (liftM2 g (f x) (f y)))
 
 noErr :: RelationalMonad d Bool -> Bool
-noErr = either (const False) id . runRel
+noErr = either (const False) id . evalPure
 
 eqM :: (Monad m, Eq a) => m a -> m a -> m Bool
 eqM = liftM2 (==)

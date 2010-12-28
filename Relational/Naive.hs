@@ -7,9 +7,9 @@ for unit tests and prototypes.
 
 -}
 
-module Relational.Naive (Relation, RelationalMonad(..), RelationalMonadT(..)) where
+module Relational.Naive (Relation, RelationalMonad(..), RelationalMonadT(..), evalPure) where
 
-import Control.Monad.Error (MonadError, ErrorT)
+import Control.Monad.Error (MonadError, ErrorT(..))
 import Control.Monad.Trans (MonadTrans, MonadIO)
 
 import Relational.Class
@@ -20,6 +20,9 @@ import Relational.Naive.Relation
 newtype RelationalMonad d a =
   RelationalMonad { runRel :: Either RelationalError a }
   deriving (Monad, Functor, MonadError RelationalError)
+
+evalPure :: RelationalMonad d a -> Either RelationalError a
+evalPure = runRel
 
 -- | A monad transformer that adds in-memory relational computations.
 newtype RelationalMonadT d m a =
