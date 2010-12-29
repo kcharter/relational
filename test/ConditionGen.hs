@@ -77,18 +77,6 @@ conditionAndSatisfyingTuples names size =
   condition mNames size >>= \c -> (c,) `liftM` either (abort c) return (evalPure $ allSatisfying names c)
     where abort c = error . (("error determining all satisfying tuples for " ++ show c ++ ": ") ++) . show
           mNames = if null names then Nothing else Just (elements names)
-              
-attrNamesIn c =
-    case c of CondNot c' -> attrNamesIn c'
-              CondAnd c' c'' -> attrNamesIn c' ++ attrNamesIn c''
-              CondOr c' c'' -> attrNamesIn c' ++ attrNamesIn c''
-              CondRel _ e e' -> attrNamesInExp e ++ attrNamesInExp e'
-              CondCall _ exps -> concatMap attrNamesInExp exps
-              _ -> []
-    where attrNamesInExp e =
-              case e of ExpValueOf n -> [n]
-                        ExpCall _ exps -> concatMap attrNamesInExp exps
-                        _ -> []
 
 allSatisfying :: (Ord d, Bounded d, Enum d, Error e, MonadError e m) =>
                  [ColName] -> Condition d m -> m [[d]]

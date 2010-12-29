@@ -32,10 +32,3 @@ disjointSignatures g =
     do s1 <- g
        s2 <- untilM (Sig.disjoint s1) g
        return (s1,s2)
-
-signatureAndNewName :: Gen Sig.Signature -> Gen (Sig.Signature, ColName)
-signatureAndNewName g =
-    do s <- g
-       n <- untilM (not . flip Sig.contains s) arbitrary
-       return (s, n)
-
