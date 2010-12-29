@@ -28,15 +28,15 @@ tuples g sigSize = listOf (vectorOf sigSize g)
 
 unionCompatiblePair :: (Ord a, Arbitrary a) => Gen (RN.Relation a, RN.Relation a)
 unionCompatiblePair =
-    modestSig >>= \s -> let g = relationWithSig s in liftM2 (,) g g
+    modestSig >>= \s -> let g = divSize 2 (relationWithSig s) in liftM2 (,) g g
 
 unionCompatibleTriple :: (Ord a, Arbitrary a) => Gen (RN.Relation a, RN.Relation a, RN.Relation a)
 unionCompatibleTriple =
-    modestSig >>= \s -> let g = relationWithSig s in liftM3 (,,) g g g
+    modestSig >>= \s -> let g = divSize 3 (relationWithSig s) in liftM3 (,,) g g g
 
 unionCompatibleFour :: (Ord a, Arbitrary a) => Gen (RN.Relation a, RN.Relation a, RN.Relation a, RN.Relation a)
 unionCompatibleFour =
-    modestSig >>= \s -> let g = relationWithSig s in liftM4 (,,,) g g g g
+    modestSig >>= \s -> let g = divSize 4 (relationWithSig s) in liftM4 (,,,) g g g g
 
 modestSig :: Gen (Sig.Signature)
 modestSig = resize 6 arbitrary
@@ -99,7 +99,7 @@ signatureOrDie =
 productCompatiblePair :: (Ord a, Arbitrary a) => Gen (RN.Relation a, RN.Relation a)
 productCompatiblePair =
   do (s1,s2) <- disjointSignatures (signatures 4)
-     liftM2 (,) (relationWithSig s1) (relationWithSig s2)
+     liftM2 (,) (divSize 2 (relationWithSig s1)) (divSize 2 (relationWithSig s2))
 
 -- | Generates pairs of product-compatible relations and a satisfiable
 -- condition on the union of their signatures. Typically, the
@@ -118,3 +118,13 @@ productCompatiblePairAndSatisfiableCondition =
      return (r,s,c)
   where mk sig common = (makeOrDie sig . (common++)) `liftM` tuples'
           where tuples' = sized $ \n -> resize (min 0 (n - length common)) (tuples arbitrary (Sig.size sig))
+
+-- | Reduces the implicit size parameter for a generator by dividing
+-- by an integer constant. If the divisor is zero or one, there is no
+-- change. Otherwise, the size is reset to the quotient of the size
+-- and the divisor, rounded to the nearest integer.
+divSize :: Int -> Gen a -> Gen a
+divSize 0 g = g
+divSize 1 g = g
+divSize by g = sized (\n -> resize (round (toRational n / toRational by)) g)
+
