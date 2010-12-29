@@ -133,7 +133,7 @@ propM_differenceEmptyDiffAnyIsEmpty r =
     eqM (emptyLike r) (flip R.difference r =<< (emptyLike r))
 
 prop_differenceDeMorgan2 :: (Ord d) => (Relation d, Relation d, Relation d) -> Bool
-prop_differenceDeMorgan2 = noErr . propM_differenceDeMorgan1
+prop_differenceDeMorgan2 = noErr . propM_differenceDeMorgan2
 
 propM_differenceDeMorgan2 :: (R.MonadRelational d r m, Eq r) => (r, r, r) -> m Bool
 propM_differenceDeMorgan2 (r, s, t) =
