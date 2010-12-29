@@ -111,13 +111,13 @@ productCompatiblePairAndSatisfiableCondition :: (Bounded a, Enum a, Ord a, Show 
 productCompatiblePairAndSatisfiableCondition =
   do (s1,s2) <- disjointSignatures (signatures 3)
      (c,ts)  <- satisfiableCondition (Sig.toList s1 ++ Sig.toList s2) =<< choose (1,8)
-     n <- sized $ \n -> choose (1, min n (length ts))
+     n <- sized $ \n -> choose (1, min (n `div` 2) (length ts))
      pairs <- map (splitAt (Sig.size s1)) `liftM` subList ts n
      r   <- mk s1 (map fst pairs)
      s   <- mk s2 (map snd pairs)
      return (r,s,c)
   where mk sig common = (makeOrDie sig . (common++)) `liftM` tuples'
-          where tuples' = sized $ \n -> resize (min 0 (n - length common)) (tuples arbitrary (Sig.size sig))
+          where tuples' = sized $ \n -> resize (max 0 (n - length common)) (tuples arbitrary (Sig.size sig))
 
 -- | Reduces the implicit size parameter for a generator by dividing
 -- by an integer constant. If the divisor is zero or one, there is no
