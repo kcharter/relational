@@ -28,15 +28,18 @@ tuples g sigSize = listOf (vectorOf sigSize g)
 
 unionCompatiblePair :: (Ord a, Arbitrary a) => Gen (RN.Relation a, RN.Relation a)
 unionCompatiblePair =
-    arbitrary >>= \s -> let g = relationWithSig s in liftM2 (,) g g
+    modestSig >>= \s -> let g = relationWithSig s in liftM2 (,) g g
 
 unionCompatibleTriple :: (Ord a, Arbitrary a) => Gen (RN.Relation a, RN.Relation a, RN.Relation a)
 unionCompatibleTriple =
-    arbitrary >>= \s -> let g = relationWithSig s in liftM3 (,,) g g g
+    modestSig >>= \s -> let g = relationWithSig s in liftM3 (,,) g g g
 
 unionCompatibleFour :: (Ord a, Arbitrary a) => Gen (RN.Relation a, RN.Relation a, RN.Relation a, RN.Relation a)
 unionCompatibleFour =
-    arbitrary >>= \s -> let g = relationWithSig s in liftM4 (,,,) g g g g
+    modestSig >>= \s -> let g = relationWithSig s in liftM4 (,,,) g g g g
+
+modestSig :: Gen (Sig.Signature)
+modestSig = resize 6 arbitrary
 
 relationWithSig :: (Ord a, Arbitrary a) => Sig.Signature -> Gen (RN.Relation a)
 relationWithSig s =
@@ -54,7 +57,7 @@ relationWithSigAndSize g sig size =
 
 relationOfSize :: (Ord a) => Gen a -> Int -> Gen (RN.Relation a)
 relationOfSize g size =
-    join (flip (relationWithSigAndSize g) size `liftM` resize 6 arbitrary)
+    join (flip (relationWithSigAndSize g) size `liftM` modestSig)
 
 makeOrDie :: (Ord a) => Sig.Signature -> [[a]] -> RN.Relation a
 makeOrDie sig = either failure id . evalPure . C.make names
