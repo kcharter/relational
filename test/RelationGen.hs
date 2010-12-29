@@ -15,16 +15,16 @@ import ConditionGen
 import SubList (subList)
 
 instance (Ord a, Arbitrary a) => Arbitrary (RN.Relation a) where
-    arbitrary = join (relationOfSize arbitrary `liftM` choose (0,6))
+    arbitrary = sized (relationOfSize arbitrary)
 
 inputs :: (Arbitrary a) => Int -> Gen ([ColName], [[a]])
 inputs maxAttrs =
     do names <- Sig.toList `liftM` signatures maxAttrs
-       tuples <- tuples (length names)
+       tuples <- tuples arbitrary (length names)
        return (names, tuples)
 
-tuples :: (Arbitrary a) => Int -> Gen [[a]]
-tuples len = listOf (vectorOf len arbitrary)
+tuples :: Gen a -> Int -> Gen [[a]]
+tuples g sigSize = listOf (vectorOf sigSize g)
 
 unionCompatiblePair :: (Ord a, Arbitrary a) => Gen (RN.Relation a, RN.Relation a)
 unionCompatiblePair =
@@ -40,7 +40,7 @@ unionCompatibleFour =
 
 relationWithSig :: (Ord a, Arbitrary a) => Sig.Signature -> Gen (RN.Relation a)
 relationWithSig s =
-    makeOrDie s `liftM` tuples (Sig.size s)
+    makeOrDie s `liftM` tuples arbitrary (Sig.size s)
 
 -- | Generates a relation over a type of generated data, with a given
 -- signature and a desired number of tuples. The desired size is a
@@ -50,13 +50,11 @@ relationWithSig s =
 -- sizes are zero and one.
 relationWithSigAndSize :: (Ord a) => Gen a -> Sig.Signature -> Int -> Gen (RN.Relation a)
 relationWithSigAndSize g sig size =
-    makeOrDie sig `liftM` tuples
-    where tuples = vectorOf size tuple 
-          tuple = vectorOf (Sig.size sig) g
+    makeOrDie sig `liftM` resize size (tuples g (Sig.size sig))
 
 relationOfSize :: (Ord a) => Gen a -> Int -> Gen (RN.Relation a)
 relationOfSize g size =
-    join (flip (relationWithSigAndSize g) size `liftM` arbitrary)
+    join (flip (relationWithSigAndSize g) size `liftM` resize 6 arbitrary)
 
 makeOrDie :: (Ord a) => Sig.Signature -> [[a]] -> RN.Relation a
 makeOrDie sig = either failure id . evalPure . C.make names
@@ -69,14 +67,14 @@ relationAndTwoAttrs :: (Ord a, Arbitrary a) => Gen (RN.Relation a, ColName, ColN
 relationAndTwoAttrs =
     (\(r, a1:a2:_) -> (r,a1,a2)) `liftM` relationAndAttrs 4 2
 
--- | The generator @relationAndAttrs sigN n@ generates pairs
--- containing a relation of @sigN@ attributes, and a list of @n@
+-- | The generator @relationAndAttrs sigSize n@ generates pairs
+-- containing a relation of @sigSize@ attributes, and a list of @n@
 -- attribute names drawn from the signature. This is meant for tests
 -- that exercise projection.
 relationAndAttrs :: (Ord a, Arbitrary a) => Int -> Int -> Gen (RN.Relation a, [ColName])
-relationAndAttrs sigN n =
-    do sig <- signaturesOfSize sigN
-       tuples <- tuples sigN
+relationAndAttrs sigSize n =
+    do sig <- signaturesOfSize sigSize
+       tuples <- tuples arbitrary sigSize
        subSig <- subList (Sig.toList sig) n
        return (makeOrDie sig tuples, subSig)
 
@@ -116,4 +114,4 @@ productCompatiblePairAndSatisfiableCondition =
      s   <- mk s2 (map snd pairs)
      return (r,s,c)
   where mk sig common = (makeOrDie sig . (common++)) `liftM` tuples'
-          where tuples' = sized $ \n -> resize (min 0 (n - length common)) (tuples (Sig.size sig))
+          where tuples' = sized $ \n -> resize (min 0 (n - length common)) (tuples arbitrary (Sig.size sig))
