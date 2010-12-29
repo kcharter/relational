@@ -6,6 +6,8 @@ GHC_COV_OPTS=-fhpc
 
 PROGS=runtests
 
+TMP=tmp
+
 runtests:
 	ghc --make $(GHC_OPTS) runtests.hs	
 	./runtests
@@ -18,6 +20,11 @@ covtests:
 	ghc --make $(GHC_OPTS) $(GHC_COV_OPTS) runtests.hs
 	./runtests
 
+runtests.tix: covtests
+
+covmarkup: runtests.tix
+	hpc markup --destdir $(TMP) runtests.tix
+
 clean:
 	rm -f $(PROGS) *.o *.hi *.tix *.prof *~
-	rm -rf build .hpc
+	rm -rf build .hpc $(TMP)
