@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 {-|
 
 Signatures for relations. These are sets of attribute names with a
@@ -12,12 +14,12 @@ module Relational.Naive.Signature (Signature, fromList, safeFromList,
 
 import Prelude hiding (null)
 import Control.Monad (liftM, foldM, when)
-import Control.Monad.Error (Error, MonadError)
+import Control.Monad.Error (MonadError)
 import Data.List (intercalate)
 import qualified Data.Set as S
 
 import Relational.ColName
-import Relational.Naive.Error
+import Relational.Error (RelationalError, duplicatedColName)
 
 newtype Signature = Signature (S.Set ColName) deriving (Eq, Ord)
 
@@ -28,12 +30,12 @@ instance Show Signature where
 fromList :: (ToColName a) => [a] -> Signature
 fromList = Signature . S.fromList . map colName
 
-safeFromList :: (ToColName a, Error e, MonadError e m) => [a] -> m Signature
+safeFromList :: (ToColName a, MonadError RelationalError m) => [a] -> m Signature
 safeFromList = (Signature `liftM`) . foldM addName S.empty 
     where addName soFar n =
-              when (S.member n' soFar) (duplicateName n') >> return (S.insert n' soFar)
+              when (S.member n' soFar) (duplicatedName n' soFar) >> return (S.insert n' soFar)
               where n' = colName n
-          duplicateName n = die ("'" ++ show n ++ "' appears more than once.")
+          duplicatedName n soFar = duplicatedColName n (S.toList soFar)
 
 toSet :: Signature -> S.Set ColName
 toSet (Signature s) = s
