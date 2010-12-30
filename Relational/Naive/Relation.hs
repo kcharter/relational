@@ -22,7 +22,6 @@ import qualified Data.Vector as V
 import Relational.ColName
 import Relational.Condition
 import Relational.Error
-import Relational.Naive.Error
 import qualified Relational.Naive.Signature as Sig
 
 data Relation a = Relation { relSig :: Sig.Signature,
@@ -44,10 +43,7 @@ relUnsafeAddTuple names values soFar =
        return soFar{ relTupleSet = S.insert (mkTuple values) (relTupleSet soFar) }
     where nameCount = length names
           valueCount = length values
-          lengthMismatch =
-              die ("Given " ++ show valueCount ++
-                   " values for " ++ show nameCount ++
-                   " attribute names.")
+          lengthMismatch = arityMismatch valueCount names
           mkTuple =
               V.fromList . M.elems . M.fromList . zip names
 
@@ -74,10 +70,7 @@ relCheckEqualSignatures r s =
     where rSig = relSig r
           sSig = relSig s
           signatureMismatch =
-              die ("Signature mismatch: " ++
-                   show rSig ++
-                   " versus " ++
-                   show sSig ++ ".")
+              differingSignatures (Sig.toList rSig) (Sig.toList sSig)
 
 relRename :: (Ord a, MonadError RelationalError m) => ColName -> ColName -> Relation a -> m (Relation a)
 relRename n m r =
@@ -88,8 +81,9 @@ relRename n m r =
                 foldM (flip (relUnsafeAddTuple newAttrs)) (relEmpty newSig) (relTuples r))
     where rSig = relSig r
           inSignature name = Sig.contains name rSig
-          nNotInSignature = die (show n ++ " is not in signature " ++ show rSig ++ ".")
-          mInSignature = die (show m ++ " is already in signature " ++ show rSig ++ ".")
+          nNotInSignature = noSuchColName n rSigNames
+          mInSignature = duplicatedColName m rSigNames
+          rSigNames = Sig.toList rSig
           -- TODO: There must already be a function for replacing an
           -- element of a list. Isn't there?
           newAttrs = let (fst, nRest) = break (n==) (Sig.toList rSig)
@@ -102,8 +96,7 @@ relProject names r =
     do mapM_ checkSigContains names
        foldM addNewTuple (relEmpty newSig) newTuples
     where checkSigContains n =
-              unless (Sig.contains n sig) (die ("Attribute " ++ show n ++
-                                                " is not in signature " ++ show sig ++ "."))
+              unless (Sig.contains n sig) (noSuchColName n (Sig.toList sig))
           addNewTuple = flip (relUnsafeAddTuple orderedNames)
           orderedNames = Sig.toList newSig
           newTuples = map dropValues (relTuples r)
@@ -123,9 +116,9 @@ relSelect c r =
           lookupFor t n = (t V.!) `liftM` indexFor n
           indexFor n =
               maybe noSuchName return (M.lookup n indexForName)
-              where noSuchName = die ("No attribute " ++ show n ++
-                                      " in signature " ++ show rSig ++ ".")
-          indexForName = M.fromList (zip (Sig.toList rSig) [0..])
+              where noSuchName = noSuchColName n sigNames
+          indexForName = M.fromList (zip sigNames [0..])
+          sigNames = Sig.toList rSig
 
 
 relCartesianProduct :: (Ord a, MonadError RelationalError m) => Relation a -> Relation a -> m (Relation a)
@@ -135,9 +128,7 @@ relCartesianProduct r s =
     where disjointSigs = Sig.null (Sig.intersection rSig sSig)
           rSig = relSig r
           sSig = relSig s
-          overlappingSigs = die ("Signature " ++ show rSig ++
-                                 " and signature " ++ show sSig ++
-                                 " overlap.")
+          overlappingSigs = overlappingSignatures (Sig.toList rSig) (Sig.toList sSig)
           newSig = Sig.union rSig sSig
           newTupleSet = S.fromList (liftM2 mergeTuples rTuples sTuples)
           mergeTuples tr ts =
