@@ -1,6 +1,8 @@
 module Main where
 
 import qualified RelationTests as RT
+import qualified RelVarsTests as RVT
 
 main :: IO ()
-main = RT.run
+main = do RT.run
+          RVT.run
