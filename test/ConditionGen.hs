@@ -14,7 +14,7 @@ import Relational.Condition
 import Relational.Naive (RelationalMonad(..), evalPure)
 import MonadUtil (untilM)
 
-expression :: (Arbitrary d, CoArbitrary [d], Monad m) => Maybe (Gen ColName) -> Int -> Gen (Expression d m)
+expression :: (Arbitrary d, CoArbitrary d, Monad m) => Maybe (Gen ColName) -> Int -> Gen (Expression d m)
 expression mName size =
     if size <= 1
     then oneof $ maybeRef ++ [ const ]
@@ -28,7 +28,7 @@ expression mName size =
 instance Arbitrary RelOp where
     arbitrary = elements [RelLT, RelEq, RelGT]
 
-condition :: (Arbitrary d, CoArbitrary [d], Monad m) => Maybe (Gen ColName) -> Int -> Gen (Condition d m)
+condition :: (Arbitrary d, CoArbitrary d, Monad m) => Maybe (Gen ColName) -> Int -> Gen (Condition d m)
 condition mName size =
     if size <= 1
     then elements [ CondTrue, CondFalse ]
